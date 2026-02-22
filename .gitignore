@@ -1,0 +1,33 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Linux
+*~
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*.sublime-project
+*.sublime-workspace
+
+# Node (if a build step is ever added)
+node_modules/
+npm-debug.log*
+yarn-error.log
+
+# Build output
+dist/
+build/
+
+# Environment
+.env
+.env.local

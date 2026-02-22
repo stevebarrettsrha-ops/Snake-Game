@@ -4,6 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Serpent - Modern Snake Game</title>
+    <meta name="description" content="Serpent – a modern, realistic Snake game with seasonal themes, animated food, and 10 levels of increasing challenge.">
+    <meta property="og:title" content="Serpent – Modern Snake Game">
+    <meta property="og:description" content="Play Serpent, a beautifully rendered Snake game with seasonal themes, animated food types, and 10 challenging levels.">
+    <meta property="og:type" content="website">
+    <meta name="theme-color" content="#0f2027">
     <style>
         * {
             margin: 0;
@@ -18,6 +23,8 @@
             min-height: 100vh;
             background: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%);
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding: 10px;
+            box-sizing: border-box;
         }
 
         .game-container {
@@ -28,6 +35,8 @@
                 0 40px 80px rgba(0, 0, 0, 0.9),
                 inset 0 2px 0 rgba(255, 255, 255, 0.1);
             border: 4px solid #444;
+            max-width: 820px;
+            width: 100%;
         }
 
         .game-wrapper {
@@ -200,6 +209,25 @@
             animation: pulse 2s infinite;
         }
 
+        @keyframes scorePop {
+            0%   { transform: scale(1);    color: #7CFC00; }
+            40%  { transform: scale(1.45); color: #ffffff; text-shadow: 0 0 18px #fff, 0 0 8px #7CFC00; }
+            100% { transform: scale(1);    color: #7CFC00; }
+        }
+
+        .score-pop {
+            animation: scorePop 0.35s ease-out;
+        }
+
+        @keyframes levelFlash {
+            0%   { background: rgba(124,252,0,0.18); }
+            100% { background: transparent; }
+        }
+
+        .level-flash {
+            animation: levelFlash 0.6s ease-out;
+        }
+
         .sr-only {
             position: absolute;
             width: 1px;
@@ -210,6 +238,47 @@
             clip: rect(0, 0, 0, 0);
             white-space: nowrap;
             border: 0;
+        }
+
+        /* ---- Mobile responsive scaling ---- */
+        @media (max-width: 780px) {
+            body {
+                align-items: flex-start;
+                padding: 10px;
+            }
+            .game-container {
+                padding: 12px;
+                border-radius: 15px;
+            }
+            .game-wrapper {
+                border-width: 6px;
+                padding: 4px;
+            }
+            canvas {
+                width: 100% !important;
+                height: auto !important;
+            }
+            .info-bar {
+                padding: 8px 12px;
+                font-size: 13px;
+            }
+            .value {
+                font-size: 16px;
+            }
+            .button-container {
+                flex-wrap: wrap;
+            }
+            button {
+                padding: 12px 18px;
+                font-size: 13px;
+            }
+            .overlay {
+                padding: 24px 28px;
+                width: 90%;
+            }
+            .overlay h2 {
+                font-size: 30px;
+            }
         }
     </style>
 </head>
@@ -348,6 +417,21 @@
             return;
         }
 
+        // Handle GPU/context loss (e.g. low memory, tab switching on mobile)
+        canvas.addEventListener('contextlost', function(e) {
+            e.preventDefault();
+            if (animationId) { cancelAnimationFrame(animationId); animationId = null; }
+            if (idleAnimationId) { cancelAnimationFrame(idleAnimationId); idleAnimationId = null; }
+            announce('Display connection lost. Please wait...');
+        }, false);
+
+        canvas.addEventListener('contextrestored', function() {
+            preRenderBackground();
+            draw();
+            if (gameState !== 'playing') startIdleAnimation();
+            announce('Display restored.');
+        }, false);
+
         const scoreEl = document.getElementById('score');
         const levelEl = document.getElementById('level');
         const highScoreEl = document.getElementById('highScore');
@@ -366,13 +450,29 @@
         bgCanvas.height = CANVAS_SIZE;
         const bgCtx = bgCanvas.getContext('2d');
 
+        // ==================== VISUAL EFFECT STATE ====================
+        let levelUpBurst = null;   // { x, y, radius, maxRadius, alpha }
+        let deathFlashAlpha = 0;   // 0–1, drives the red overlay on death
+
         // ==================== GAME STATE ====================
         let snake = [];
         let direction = { x: 1, y: 0 };
         let nextDirection = { x: 1, y: 0 };
         let food = {};
         let score = 0;
-        let highScore = parseInt(localStorage.getItem('serpentHighScore'), 10) || 0;
+        function loadHighScore() {
+            try {
+                return parseInt(localStorage.getItem('serpentHighScore'), 10) || 0;
+            } catch (e) {
+                return 0;
+            }
+        }
+        function saveHighScore(val) {
+            try {
+                localStorage.setItem('serpentHighScore', val);
+            } catch (e) { /* quota exceeded or private/incognito mode */ }
+        }
+        let highScore = loadHighScore();
         let currentLevel = 1;
         let gameState = 'start'; // 'start', 'playing', 'paused', 'gameover'
         let animationFrame = 0;
@@ -600,24 +700,39 @@
             });
         }
 
+        // Cache a small offscreen canvas per season color to stamp particles cheaply
+        const particleCache = {};
+        function getParticleStamp(color, maxSize) {
+            const key = color + maxSize;
+            if (particleCache[key]) return particleCache[key];
+            const size = Math.ceil(maxSize) * 2 + 2;
+            const stamp = document.createElement('canvas');
+            stamp.width = size;
+            stamp.height = size;
+            const sc = stamp.getContext('2d');
+            const cx = size / 2;
+            const grad = sc.createRadialGradient(cx, cx, 0, cx, cx, maxSize);
+            grad.addColorStop(0, color);
+            grad.addColorStop(1, 'rgba(255,255,255,0)');
+            sc.fillStyle = grad;
+            sc.beginPath();
+            sc.arc(cx, cx, maxSize, 0, Math.PI * 2);
+            sc.fill();
+            particleCache[key] = stamp;
+            return stamp;
+        }
+
         function drawParticles() {
             const colors = getSeasonColors(LEVELS[currentLevel - 1].season);
 
             particles.forEach(p => {
+                const stamp = getParticleStamp(colors.particle, p.size);
+                const half = stamp.width / 2;
                 ctx.save();
                 ctx.globalAlpha = p.opacity;
                 ctx.translate(p.x, p.y);
                 ctx.rotate(p.rotation);
-
-                const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, p.size);
-                gradient.addColorStop(0, colors.particle);
-                gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
-
-                ctx.fillStyle = gradient;
-                ctx.beginPath();
-                ctx.arc(0, 0, p.size, 0, Math.PI * 2);
-                ctx.fill();
-
+                ctx.drawImage(stamp, -half, -half);
                 ctx.restore();
             });
         }
@@ -634,7 +749,9 @@
             }));
 
             const continuousSegments = [];
+            const segmentStartIndices = [];
             let currentSegment = [screenSegments[0]];
+            let currentStartIndex = 0;
 
             for (let i = 1; i < screenSegments.length; i++) {
                 const prev = snake[i - 1];
@@ -644,22 +761,26 @@
                 const wrapsVertical = Math.abs(prev.y - curr.y) > GRID_SIZE / 2;
 
                 if (wrapsHorizontal || wrapsVertical) {
+                    segmentStartIndices.push(currentStartIndex);
                     continuousSegments.push(currentSegment);
+                    currentStartIndex = i;
                     currentSegment = [screenSegments[i]];
                 } else {
                     currentSegment.push(screenSegments[i]);
                 }
             }
+            segmentStartIndices.push(currentStartIndex);
             continuousSegments.push(currentSegment);
 
             continuousSegments.forEach((segment, segIndex) => {
                 if (segment.length === 0) return;
+                const globalOffset = segmentStartIndices[segIndex];
 
                 // Draw shadow
                 ctx.save();
                 ctx.globalAlpha = 0.3;
                 segment.forEach((point, i) => {
-                    const globalIndex = segIndex === 0 ? i : screenSegments.indexOf(point);
+                    const globalIndex = globalOffset + i;
                     const size = (TILE_SIZE / 2.2) * (1 - globalIndex / snake.length * 0.4);
 
                     const shadowGradient = ctx.createRadialGradient(
@@ -731,7 +852,7 @@
 
                 // Draw scales
                 segment.forEach((point, i) => {
-                    const globalIndex = segIndex === 0 ? i : screenSegments.indexOf(point);
+                    const globalIndex = globalOffset + i;
                     const size = (TILE_SIZE / 2.2) * (1 - globalIndex / snake.length * 0.4);
 
                     ctx.save();
@@ -803,6 +924,16 @@
             ctx.save();
             ctx.translate(head.x, head.y);
             ctx.rotate(headAngle);
+
+            // Head glow
+            const headGlowRadius = headSize * 1.5;
+            const headGlow = ctx.createRadialGradient(0, 0, headSize * 0.4, 0, 0, headGlowRadius);
+            headGlow.addColorStop(0, 'rgba(90, 200, 90, 0.22)');
+            headGlow.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.fillStyle = headGlow;
+            ctx.beginPath();
+            ctx.arc(0, 0, headGlowRadius, 0, Math.PI * 2);
+            ctx.fill();
 
             // Head shadow
             ctx.globalAlpha = 0.4;
@@ -925,6 +1056,20 @@
         }
 
         // ==================== FOOD RENDERING ====================
+        function drawFoodGlow(fx, fy, r, g, b, baseRadius) {
+            // Breathing glow ring around food
+            const pulse = 0.5 + 0.5 * Math.sin(animationFrame * 0.12);
+            const glowRadius = baseRadius + 6 + pulse * 8;
+            const innerAlpha = 0.35 + pulse * 0.2;
+            const glowGrad = ctx.createRadialGradient(fx, fy, baseRadius * 0.6, fx, fy, glowRadius);
+            glowGrad.addColorStop(0, `rgba(${r},${g},${b},${innerAlpha.toFixed(2)})`);
+            glowGrad.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.fillStyle = glowGrad;
+            ctx.beginPath();
+            ctx.arc(fx, fy, glowRadius, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
         function drawRealisticFood() {
             if (food.x === undefined || food.y === undefined) return;
 
@@ -932,6 +1077,7 @@
             const fy = food.y * TILE_SIZE + TILE_SIZE / 2;
 
             if (food.type === 'RABBIT') {
+                drawFoodGlow(fx, fy, 240, 240, 200, 16);
                 const hop = Math.abs(Math.sin(animationFrame * 0.15)) * 15;
                 const ry = fy - hop;
 
@@ -977,6 +1123,7 @@
                 ctx.fill();
 
             } else if (food.type === 'MOUSE') {
+                drawFoodGlow(fx, fy, 160, 160, 160, 12);
                 // Shadow
                 ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
                 ctx.beginPath();
@@ -1019,6 +1166,7 @@
 
             } else {
                 // Apple
+                drawFoodGlow(fx, fy, 229, 57, 53, 13);
                 // Shadow
                 ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
                 ctx.beginPath();
@@ -1109,15 +1257,25 @@
                 updateLevel();
                 generateVegetation();
                 initParticles();
+                // Trigger expanding ring burst at screen centre
+                levelUpBurst = { x: CANVAS_SIZE / 2, y: CANVAS_SIZE / 2, radius: 30, alpha: 1 };
+                // CSS flash on the level indicator
+                levelEl.classList.remove('level-flash');
+                void levelEl.offsetWidth; // force reflow to restart animation
+                levelEl.classList.add('level-flash');
                 announce('Level ' + currentLevel + '!');
             }
         }
 
         function updateScore() {
             scoreEl.textContent = score;
+            // Score pop animation
+            scoreEl.classList.remove('score-pop');
+            void scoreEl.offsetWidth; // force reflow
+            scoreEl.classList.add('score-pop');
             if (score > highScore) {
                 highScore = score;
-                localStorage.setItem('serpentHighScore', highScore);
+                saveHighScore(highScore);
                 highScoreEl.textContent = highScore;
             }
         }
@@ -1132,42 +1290,74 @@
                 cancelAnimationFrame(animationId);
                 animationId = null;
             }
+            deathFlashAlpha = 0.65; // trigger red flash
             finalScoreEl.textContent = score;
             finalLevelEl.textContent = currentLevel;
-            gameOverScreen.style.display = 'block';
+            // Show game over screen after the flash draws one frame
+            requestAnimationFrame(() => {
+                draw();
+                setTimeout(() => {
+                    gameOverScreen.style.display = 'block';
+                    startIdleAnimation();
+                }, 400);
+            });
             announce('Game over. Final score: ' + score);
-            startIdleAnimation();
+        }
+
+        // ==================== ERROR DISPLAY ====================
+        function showErrorOverlay() {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.88)';
+            ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+            ctx.shadowBlur = 0;
+            ctx.textAlign = 'center';
+            ctx.fillStyle = '#ff4444';
+            ctx.font = 'bold 26px Segoe UI, sans-serif';
+            ctx.fillText('Something went wrong', CANVAS_SIZE / 2, CANVAS_SIZE / 2 - 24);
+            ctx.fillStyle = '#cccccc';
+            ctx.font = '16px Segoe UI, sans-serif';
+            ctx.fillText('Please refresh the page to restart.', CANVAS_SIZE / 2, CANVAS_SIZE / 2 + 18);
         }
 
         // ==================== GAME LOOP (requestAnimationFrame) ====================
         function gameLoop(timestamp) {
             if (gameState !== 'playing') return;
 
-            if (!lastUpdateTime) {
-                lastUpdateTime = timestamp;
-            }
-
-            const deltaTime = timestamp - lastUpdateTime;
-            lastUpdateTime = timestamp;
-            accumulatedTime += deltaTime;
-
-            const currentSpeed = LEVELS[currentLevel - 1].speed;
-
-            while (accumulatedTime >= currentSpeed) {
-                update();
-                accumulatedTime -= currentSpeed;
-
-                if (gameState !== 'playing') {
-                    return;
+            try {
+                if (!lastUpdateTime) {
+                    lastUpdateTime = timestamp;
                 }
-            }
 
-            draw();
-            animationId = requestAnimationFrame(gameLoop);
+                const deltaTime = timestamp - lastUpdateTime;
+                lastUpdateTime = timestamp;
+                accumulatedTime += deltaTime;
+
+                const currentSpeed = LEVELS[currentLevel - 1].speed;
+
+                while (accumulatedTime >= currentSpeed) {
+                    update();
+                    accumulatedTime -= currentSpeed;
+
+                    if (gameState !== 'playing') {
+                        return;
+                    }
+                }
+
+                draw();
+                animationId = requestAnimationFrame(gameLoop);
+            } catch (err) {
+                gameState = 'gameover';
+                if (animationId) {
+                    cancelAnimationFrame(animationId);
+                    animationId = null;
+                }
+                showErrorOverlay();
+                announce('An error occurred. Please refresh the page.');
+            }
         }
 
         function update() {
-            direction = { ...nextDirection };
+            direction.x = nextDirection.x;
+            direction.y = nextDirection.y;
 
             let headX = snake[0].x + direction.x;
             let headY = snake[0].y + direction.y;
@@ -1204,11 +1394,43 @@
             updateParticles();
         }
 
+        function drawLevelUpBurst() {
+            if (!levelUpBurst) return;
+            const b = levelUpBurst;
+            ctx.save();
+            ctx.globalAlpha = b.alpha;
+            ctx.strokeStyle = '#7CFC00';
+            ctx.lineWidth = 4;
+            ctx.shadowColor = '#7CFC00';
+            ctx.shadowBlur = 20;
+            ctx.beginPath();
+            ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
+
+            b.radius += 10;
+            b.alpha -= 0.045;
+            if (b.alpha <= 0) levelUpBurst = null;
+        }
+
+        function drawDeathFlash() {
+            if (deathFlashAlpha <= 0) return;
+            ctx.save();
+            ctx.globalAlpha = deathFlashAlpha;
+            ctx.fillStyle = '#ff1111';
+            ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+            ctx.restore();
+            deathFlashAlpha -= 0.06;
+            if (deathFlashAlpha < 0) deathFlashAlpha = 0;
+        }
+
         function draw() {
             drawBackground();
             drawParticles();
             drawRealisticSnake();
             drawRealisticFood();
+            drawLevelUpBurst();
+            drawDeathFlash();
 
             if (gameState === 'paused') {
                 ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
@@ -1271,6 +1493,8 @@
             animationFrame = 0;
             lastUpdateTime = 0;
             accumulatedTime = 0;
+            levelUpBurst = null;
+            deathFlashAlpha = 0;
 
             startScreen.style.display = 'none';
             gameOverScreen.style.display = 'none';
