@@ -348,6 +348,8 @@
         const LIGHT_PATCH_COUNT = 5;
         const MAX_FOOD_SPAWN_ATTEMPTS = 100;
         const IDLE_FRAME_INTERVAL = 50;
+        const MAX_JAW_ANGLE = 0.55;   // radians (~31°) — how wide the jaw opens
+        const JAW_OPEN_DISTANCE = 4;  // grid tiles within which jaw starts to open
 
         const FOOD_TYPES = {
             APPLE: { points: 10, probability: 0.6 },
@@ -482,6 +484,7 @@
         let accumulatedTime = 0;
         let animationId = null;
         let idleAnimationId = null;
+        let jawAngle = 0; // current jaw-open angle in radians
 
         // Touch handling state
         let touchStartX = 0;
@@ -661,6 +664,107 @@
                 bgCtx.fillStyle = lightGradient;
                 bgCtx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
             }
+
+            // Pebbles / stones scattered on the ground
+            for (let i = 0; i < 40; i++) {
+                const pr1 = ((currentLevel * 44444 + i * 6197) % 10000) / 10000;
+                const pr2 = ((currentLevel * 44444 + i * 6199) % 10000) / 10000;
+                const pr3 = ((currentLevel * 44444 + i * 6203) % 10000) / 10000;
+                const pr4 = ((currentLevel * 44444 + i * 6211) % 10000) / 10000;
+                const px = pr1 * CANVAS_SIZE;
+                const py = pr2 * CANVAS_SIZE;
+                const pSz = 3.5 + pr3 * 7;
+                const pAng = pr4 * Math.PI;
+                const pG = bgCtx.createRadialGradient(px - pSz * 0.3, py - pSz * 0.3, 0, px, py, pSz);
+                pG.addColorStop(0, '#c8c5b8');
+                pG.addColorStop(0.7, '#9a9888');
+                pG.addColorStop(1, '#6a6860');
+                bgCtx.fillStyle = pG;
+                bgCtx.globalAlpha = 0.55 + pr3 * 0.3;
+                bgCtx.beginPath();
+                bgCtx.ellipse(px, py, pSz, pSz * 0.62, pAng, 0, Math.PI * 2);
+                bgCtx.fill();
+                bgCtx.strokeStyle = 'rgba(70,65,55,0.28)';
+                bgCtx.lineWidth = 0.5;
+                bgCtx.stroke();
+            }
+            bgCtx.globalAlpha = 1;
+
+            // Seasonal ground details
+            const detailSeason = LEVELS[currentLevel - 1].season;
+            if (detailSeason === 'autumn') {
+                // Fallen leaves
+                const leafColors = ['#d84315', '#e65100', '#f57c00', '#bf360c', '#8d6e63'];
+                for (let i = 0; i < 90; i++) {
+                    const r1 = ((currentLevel * 13579 + i * 3137) % 10000) / 10000;
+                    const r2 = ((currentLevel * 13579 + i * 3163) % 10000) / 10000;
+                    const r3 = ((currentLevel * 13579 + i * 3167) % 10000) / 10000;
+                    const r4 = ((currentLevel * 13579 + i * 3169) % 10000) / 10000;
+                    bgCtx.save();
+                    bgCtx.translate(r1 * CANVAS_SIZE, r2 * CANVAS_SIZE);
+                    bgCtx.rotate(r4 * Math.PI * 2);
+                    bgCtx.fillStyle = leafColors[Math.floor(r3 * 5)];
+                    bgCtx.globalAlpha = 0.45 + r3 * 0.3;
+                    bgCtx.beginPath();
+                    bgCtx.ellipse(0, 0, 5 + r3 * 3, 3 + r3 * 2, 0, 0, Math.PI * 2);
+                    bgCtx.fill();
+                    bgCtx.restore();
+                }
+            } else if (detailSeason === 'winter') {
+                // Snow drifts
+                for (let i = 0; i < 45; i++) {
+                    const r1 = ((currentLevel * 22222 + i * 4157) % 10000) / 10000;
+                    const r2 = ((currentLevel * 22222 + i * 4159) % 10000) / 10000;
+                    const r3 = ((currentLevel * 22222 + i * 4177) % 10000) / 10000;
+                    const sx = r1 * CANVAS_SIZE;
+                    const sy = r2 * CANVAS_SIZE;
+                    const snowR = 18 + r3 * 38;
+                    const snowG = bgCtx.createRadialGradient(sx, sy, 0, sx, sy, snowR);
+                    snowG.addColorStop(0, 'rgba(255,255,255,0.55)');
+                    snowG.addColorStop(1, 'rgba(255,255,255,0)');
+                    bgCtx.fillStyle = snowG;
+                    bgCtx.beginPath();
+                    bgCtx.arc(sx, sy, snowR, 0, Math.PI * 2);
+                    bgCtx.fill();
+                }
+            } else if (detailSeason === 'spring') {
+                // Wildflowers
+                const flowerColors = ['#f48fb1', '#ffcc80', '#ce93d8', '#81d4fa', '#a5d6a7'];
+                for (let i = 0; i < 55; i++) {
+                    const r1 = ((currentLevel * 33333 + i * 5171) % 10000) / 10000;
+                    const r2 = ((currentLevel * 33333 + i * 5179) % 10000) / 10000;
+                    const r3 = ((currentLevel * 33333 + i * 5189) % 10000) / 10000;
+                    bgCtx.fillStyle = flowerColors[Math.floor(r3 * 5)];
+                    bgCtx.globalAlpha = 0.65;
+                    bgCtx.beginPath();
+                    bgCtx.arc(r1 * CANVAS_SIZE, r2 * CANVAS_SIZE, 2.5, 0, Math.PI * 2);
+                    bgCtx.fill();
+                    bgCtx.fillStyle = '#fff9c4';
+                    bgCtx.globalAlpha = 0.85;
+                    bgCtx.beginPath();
+                    bgCtx.arc(r1 * CANVAS_SIZE, r2 * CANVAS_SIZE, 0.9, 0, Math.PI * 2);
+                    bgCtx.fill();
+                }
+            } else if (detailSeason === 'void') {
+                // Cracked earth lines
+                bgCtx.globalAlpha = 0.22;
+                bgCtx.strokeStyle = '#9e9e9e';
+                bgCtx.lineWidth = 1;
+                for (let i = 0; i < 20; i++) {
+                    const r1 = ((currentLevel * 55555 + i * 7213) % 10000) / 10000;
+                    const r2 = ((currentLevel * 55555 + i * 7219) % 10000) / 10000;
+                    const r3 = ((currentLevel * 55555 + i * 7229) % 10000) / 10000;
+                    const vLen = 30 + r3 * 80;
+                    const vAng = r3 * Math.PI;
+                    const vx = r1 * CANVAS_SIZE;
+                    const vy = r2 * CANVAS_SIZE;
+                    bgCtx.beginPath();
+                    bgCtx.moveTo(vx, vy);
+                    bgCtx.lineTo(vx + Math.cos(vAng) * vLen, vy + Math.sin(vAng) * vLen);
+                    bgCtx.stroke();
+                }
+            }
+            bgCtx.globalAlpha = 1;
         }
 
         function drawBackground() {
@@ -756,10 +860,8 @@
             for (let i = 1; i < screenSegments.length; i++) {
                 const prev = snake[i - 1];
                 const curr = snake[i];
-
                 const wrapsHorizontal = Math.abs(prev.x - curr.x) > GRID_SIZE / 2;
                 const wrapsVertical = Math.abs(prev.y - curr.y) > GRID_SIZE / 2;
-
                 if (wrapsHorizontal || wrapsVertical) {
                     segmentStartIndices.push(currentStartIndex);
                     continuousSegments.push(currentSegment);
@@ -776,142 +878,167 @@
                 if (segment.length === 0) return;
                 const globalOffset = segmentStartIndices[segIndex];
 
-                // Draw shadow
-                ctx.save();
-                ctx.globalAlpha = 0.3;
-                segment.forEach((point, i) => {
-                    const globalIndex = globalOffset + i;
-                    const size = (TILE_SIZE / 2.2) * (1 - globalIndex / snake.length * 0.4);
-
-                    const shadowGradient = ctx.createRadialGradient(
-                        point.x + 6, point.y + 6, 0,
-                        point.x + 6, point.y + 6, size + 4
-                    );
-                    shadowGradient.addColorStop(0, 'rgba(0, 0, 0, 0.5)');
-                    shadowGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-
-                    ctx.fillStyle = shadowGradient;
+                // Helper: draw the curved body path
+                function buildBodyPath() {
                     ctx.beginPath();
-                    ctx.arc(point.x + 6, point.y + 6, size + 4, 0, Math.PI * 2);
-                    ctx.fill();
-                });
-                ctx.restore();
+                    ctx.moveTo(segment[0].x, segment[0].y);
+                    for (let i = 1; i < segment.length; i++) {
+                        const xc = (segment[i].x + segment[i - 1].x) / 2;
+                        const yc = (segment[i].y + segment[i - 1].y) / 2;
+                        ctx.quadraticCurveTo(segment[i - 1].x, segment[i - 1].y, xc, yc);
+                    }
+                    ctx.lineTo(segment[segment.length - 1].x, segment[segment.length - 1].y);
+                }
 
-                // Draw body outline
+                // --- CAST SHADOW ---
                 if (segment.length > 1) {
                     ctx.save();
-                    ctx.strokeStyle = '#0d2b0d';
+                    ctx.shadowColor = 'rgba(0,0,0,0.5)';
+                    ctx.shadowBlur = 10;
+                    ctx.shadowOffsetX = 5;
+                    ctx.shadowOffsetY = 6;
+                    ctx.strokeStyle = 'rgba(0,0,0,0.01)';
+                    ctx.lineWidth = TILE_SIZE + 4;
+                    ctx.lineCap = 'round';
+                    ctx.lineJoin = 'round';
+                    buildBodyPath();
+                    ctx.stroke();
+                    ctx.restore();
+                }
+
+                // --- DARK OUTLINE ---
+                if (segment.length > 1) {
+                    ctx.save();
+                    ctx.strokeStyle = '#0a1e0a';
                     ctx.lineWidth = TILE_SIZE + 6;
                     ctx.lineCap = 'round';
                     ctx.lineJoin = 'round';
-
-                    ctx.beginPath();
-                    ctx.moveTo(segment[0].x, segment[0].y);
-
-                    for (let i = 1; i < segment.length; i++) {
-                        const xc = (segment[i].x + segment[i - 1].x) / 2;
-                        const yc = (segment[i].y + segment[i - 1].y) / 2;
-                        ctx.quadraticCurveTo(segment[i - 1].x, segment[i - 1].y, xc, yc);
-                    }
-                    ctx.lineTo(segment[segment.length - 1].x, segment[segment.length - 1].y);
+                    buildBodyPath();
                     ctx.stroke();
                     ctx.restore();
                 }
 
-                // Draw main body
+                // --- VENTRAL (belly) — cream centre band, full width ---
                 if (segment.length > 1) {
                     ctx.save();
-                    ctx.lineWidth = TILE_SIZE;
-                    ctx.lineCap = 'round';
-                    ctx.lineJoin = 'round';
-
-                    ctx.beginPath();
-                    ctx.moveTo(segment[0].x, segment[0].y);
-
-                    for (let i = 1; i < segment.length; i++) {
-                        const xc = (segment[i].x + segment[i - 1].x) / 2;
-                        const yc = (segment[i].y + segment[i - 1].y) / 2;
-                        ctx.quadraticCurveTo(segment[i - 1].x, segment[i - 1].y, xc, yc);
-                    }
-                    ctx.lineTo(segment[segment.length - 1].x, segment[segment.length - 1].y);
-
-                    const bodyGradient = ctx.createLinearGradient(
+                    const bellyG = ctx.createLinearGradient(
                         0, segment[0].y - TILE_SIZE / 2,
                         0, segment[0].y + TILE_SIZE / 2
                     );
-                    bodyGradient.addColorStop(0, '#2d5a2d');
-                    bodyGradient.addColorStop(0.3, '#3d7a3d');
-                    bodyGradient.addColorStop(0.5, '#4a8a4a');
-                    bodyGradient.addColorStop(0.7, '#3d7a3d');
-                    bodyGradient.addColorStop(1, '#2d5a2d');
-
-                    ctx.strokeStyle = bodyGradient;
+                    bellyG.addColorStop(0,    '#2d5a2d');
+                    bellyG.addColorStop(0.38, '#c8ba7a');
+                    bellyG.addColorStop(0.62, '#c8ba7a');
+                    bellyG.addColorStop(1,    '#2d5a2d');
+                    ctx.strokeStyle = bellyG;
+                    ctx.lineWidth = TILE_SIZE - 1;
+                    ctx.lineCap = 'round';
+                    ctx.lineJoin = 'round';
+                    buildBodyPath();
                     ctx.stroke();
                     ctx.restore();
                 }
 
-                // Draw scales
+                // --- DORSAL (back) — rich green, narrower ---
+                if (segment.length > 1) {
+                    ctx.save();
+                    const dorsalG = ctx.createLinearGradient(
+                        0, segment[0].y - TILE_SIZE / 2,
+                        0, segment[0].y + TILE_SIZE / 2
+                    );
+                    dorsalG.addColorStop(0,    '#1a3a1a');
+                    dorsalG.addColorStop(0.28, '#3d7a3d');
+                    dorsalG.addColorStop(0.5,  '#5aaa5a');
+                    dorsalG.addColorStop(0.72, '#3d7a3d');
+                    dorsalG.addColorStop(1,    '#1a3a1a');
+                    ctx.strokeStyle = dorsalG;
+                    ctx.lineWidth = TILE_SIZE * 0.72;
+                    ctx.lineCap = 'round';
+                    ctx.lineJoin = 'round';
+                    buildBodyPath();
+                    ctx.stroke();
+                    ctx.restore();
+                }
+
+                // --- DORSAL MIDLINE STRIPE ---
+                if (segment.length > 1) {
+                    ctx.save();
+                    ctx.strokeStyle = 'rgba(10,35,10,0.5)';
+                    ctx.lineWidth = TILE_SIZE * 0.16;
+                    ctx.lineCap = 'round';
+                    ctx.lineJoin = 'round';
+                    buildBodyPath();
+                    ctx.stroke();
+                    ctx.restore();
+                }
+
+                // --- SPECULAR HIGHLIGHT SHEEN ---
+                if (segment.length > 1) {
+                    ctx.save();
+                    ctx.strokeStyle = 'rgba(160,230,160,0.16)';
+                    ctx.lineWidth = TILE_SIZE * 0.24;
+                    ctx.lineCap = 'round';
+                    ctx.lineJoin = 'round';
+                    buildBodyPath();
+                    ctx.stroke();
+                    ctx.restore();
+                }
+
+                // --- SCALE TEXTURE ---
+                // Each scale is an ellipse oriented perpendicular to body direction.
+                // Alternating row offset gives overlapping tile effect.
                 segment.forEach((point, i) => {
                     const globalIndex = globalOffset + i;
-                    const size = (TILE_SIZE / 2.2) * (1 - globalIndex / snake.length * 0.4);
+                    const t = globalIndex / Math.max(snake.length - 1, 1);
+                    const size = (TILE_SIZE / 2.2) * (1 - t * 0.45);
+
+                    // Direction along body at this point
+                    let angle = 0;
+                    if (i < segment.length - 1) {
+                        angle = Math.atan2(segment[i + 1].y - point.y, segment[i + 1].x - point.x);
+                    } else if (i > 0) {
+                        angle = Math.atan2(point.y - segment[i - 1].y, point.x - segment[i - 1].x);
+                    }
 
                     ctx.save();
-                    ctx.globalAlpha = 0.6;
+                    ctx.translate(point.x, point.y);
+                    ctx.rotate(angle);
 
-                    // Dorsal scales
-                    for (let row = 0; row < 3; row++) {
-                        const scaleY = point.y - size * 0.3 + row * size * 0.3;
+                    // In rotated space: local-x = along body, local-y = perpendicular (right side)
+                    const rowOff = (globalIndex % 2 === 0) ? size * 0.14 : -size * 0.14;
+                    for (let s = -1; s <= 1; s += 2) {
+                        const sx = rowOff;           // slight stagger along body
+                        const sy = s * size * 0.54;  // left/right of body
+                        const sL = size * 0.32;      // extent along body
+                        const sW = size * 0.44;      // extent perpendicular
 
-                        ctx.fillStyle = row === 1 ? '#1a3a1a' : '#2d5a2d';
+                        ctx.globalAlpha = 0.5;
+                        ctx.fillStyle = '#3d7a3d';
                         ctx.beginPath();
-                        ctx.moveTo(point.x - 3, scaleY);
-                        ctx.lineTo(point.x, scaleY - 3);
-                        ctx.lineTo(point.x + 3, scaleY);
-                        ctx.lineTo(point.x, scaleY + 3);
-                        ctx.closePath();
+                        ctx.ellipse(sx, sy, sL, sW, 0, 0, Math.PI * 2);
                         ctx.fill();
+
+                        ctx.globalAlpha = 0.18;
+                        ctx.fillStyle = '#a8d8a8';
+                        ctx.beginPath();
+                        ctx.ellipse(sx - sL * 0.22, sy - sW * 0.28, sL * 0.38, sW * 0.3, 0, 0, Math.PI * 2);
+                        ctx.fill();
+
+                        ctx.globalAlpha = 0.32;
+                        ctx.strokeStyle = '#0f2a0f';
+                        ctx.lineWidth = 0.7;
+                        ctx.beginPath();
+                        ctx.ellipse(sx, sy, sL, sW, 0, 0, Math.PI * 2);
+                        ctx.stroke();
                     }
-
-                    // Lateral scales
-                    ctx.globalAlpha = 0.4;
-                    for (let side = 0; side < 2; side++) {
-                        const sideX = point.x + (side === 0 ? -size * 0.7 : size * 0.7);
-                        for (let j = 0; j < 4; j++) {
-                            const scaleY = point.y - size * 0.5 + j * size * 0.3;
-
-                            ctx.fillStyle = '#4a8a4a';
-                            ctx.beginPath();
-                            ctx.ellipse(sideX, scaleY, 4, 3, 0, 0, Math.PI * 2);
-                            ctx.fill();
-
-                            ctx.fillStyle = 'rgba(139, 195, 74, 0.3)';
-                            ctx.beginPath();
-                            ctx.ellipse(sideX - 1, scaleY - 1, 2, 1.5, 0, 0, Math.PI * 2);
-                            ctx.fill();
-                        }
-                    }
-
-                    // Ventral scales
-                    ctx.globalAlpha = 0.5;
-                    const bellyWidth = size * 1.2;
-                    for (let j = 0; j < 5; j++) {
-                        const scaleX = point.x - bellyWidth / 2 + j * bellyWidth / 4;
-
-                        ctx.fillStyle = '#7cb77c';
-                        ctx.fillRect(scaleX, point.y + size * 0.6, bellyWidth / 5, 3);
-
-                        ctx.fillStyle = 'rgba(200, 230, 201, 0.4)';
-                        ctx.fillRect(scaleX, point.y + size * 0.6, bellyWidth / 5, 1);
-                    }
-
                     ctx.restore();
                 });
             });
 
-            // Draw head
+            // ==================== REALISTIC HEAD ====================
             const head = screenSegments[0];
-            const headSize = TILE_SIZE / 1.6;
-            const neckSize = TILE_SIZE / 2;
+            const H = TILE_SIZE / 1.55;   // head length (forward)
+            const N = TILE_SIZE / 1.95;   // head half-width at widest
+            const hingeX = -N * 0.15;     // jaw-hinge local-x
 
             let headAngle;
             if (screenSegments.length > 1) {
@@ -925,134 +1052,300 @@
             ctx.translate(head.x, head.y);
             ctx.rotate(headAngle);
 
-            // Head glow
-            const headGlowRadius = headSize * 1.5;
-            const headGlow = ctx.createRadialGradient(0, 0, headSize * 0.4, 0, 0, headGlowRadius);
-            headGlow.addColorStop(0, 'rgba(90, 200, 90, 0.22)');
-            headGlow.addColorStop(1, 'rgba(0,0,0,0)');
-            ctx.fillStyle = headGlow;
+            // Ambient head glow
+            const glowR = H * 1.7;
+            const headGlowG = ctx.createRadialGradient(H * 0.2, 0, H * 0.1, 0, 0, glowR);
+            headGlowG.addColorStop(0, 'rgba(70,185,70,0.2)');
+            headGlowG.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.fillStyle = headGlowG;
             ctx.beginPath();
-            ctx.arc(0, 0, headGlowRadius, 0, Math.PI * 2);
+            ctx.arc(0, 0, glowR, 0, Math.PI * 2);
             ctx.fill();
 
-            // Head shadow
-            ctx.globalAlpha = 0.4;
-            ctx.fillStyle = '#000';
+            // Head cast shadow
+            ctx.save();
+            ctx.shadowColor = 'rgba(0,0,0,0.55)';
+            ctx.shadowBlur = 12;
+            ctx.shadowOffsetX = 6;
+            ctx.shadowOffsetY = 7;
+            ctx.fillStyle = 'rgba(0,0,0,0.01)';
             ctx.beginPath();
-            ctx.ellipse(8, 4, headSize, neckSize, 0, 0, Math.PI * 2);
+            ctx.moveTo(hingeX - N * 0.35, -N * 1.05);
+            ctx.bezierCurveTo(H * 0.35, -N * 1.15, H * 0.88, -N * 0.5, H + 7, 0);
+            ctx.bezierCurveTo(H * 0.88, N * 0.5, H * 0.35, N * 1.15, hingeX - N * 0.35, N * 1.05);
+            ctx.closePath();
             ctx.fill();
-            ctx.globalAlpha = 1;
+            ctx.restore();
 
-            // Neck
-            const neckGradient = ctx.createRadialGradient(-neckSize, 0, 0, 0, 0, neckSize);
-            neckGradient.addColorStop(0, '#3d7a3d');
-            neckGradient.addColorStop(0.6, '#2d5a2d');
-            neckGradient.addColorStop(1, '#1a3a1a');
+            // ===== LOWER JAW (drawn first, behind skull) =====
+            ctx.save();
+            ctx.translate(hingeX, 0);
+            ctx.rotate(jawAngle); // rotate about the jaw hinge
+            ctx.translate(-hingeX, 0);
 
-            ctx.fillStyle = neckGradient;
+            // Lower jaw exterior
+            const ljG = ctx.createLinearGradient(hingeX, 0, H, N);
+            ljG.addColorStop(0,    '#2a5a2a');
+            ljG.addColorStop(0.55, '#4d8a4d');
+            ljG.addColorStop(1,    '#b0a068');
+            ctx.fillStyle = ljG;
             ctx.beginPath();
-            ctx.ellipse(-neckSize / 2, 0, neckSize, neckSize * 0.9, 0, 0, Math.PI * 2);
+            ctx.moveTo(hingeX, N * 0.1);
+            ctx.bezierCurveTo(H * 0.18, N * 1.0,  H * 0.72, N * 0.88, H + 5, N * 0.08);
+            ctx.bezierCurveTo(H + 2,    -N * 0.04, H * 0.55, -N * 0.08, hingeX, -N * 0.1);
+            ctx.closePath();
             ctx.fill();
+            ctx.strokeStyle = '#0a1a0a';
+            ctx.lineWidth = 1.2;
+            ctx.stroke();
 
-            // Head
-            const headGradient = ctx.createRadialGradient(headSize / 3, -2, 0, headSize / 2, 0, headSize);
-            headGradient.addColorStop(0, '#5a9a5a');
-            headGradient.addColorStop(0.4, '#3d7a3d');
-            headGradient.addColorStop(0.7, '#2d5a2d');
-            headGradient.addColorStop(1, '#1a3a1a');
-
-            ctx.fillStyle = headGradient;
+            // Chin midline groove
+            ctx.strokeStyle = 'rgba(8,25,8,0.38)';
+            ctx.lineWidth = 1;
             ctx.beginPath();
-            ctx.ellipse(headSize / 2, 0, headSize * 0.7, neckSize * 0.85, 0, 0, Math.PI * 2);
+            ctx.moveTo(hingeX + 5, 0);
+            ctx.bezierCurveTo(H * 0.38, N * 0.07, H * 0.78, N * 0.04, H + 3, 0);
+            ctx.stroke();
+
+            // Mouth lining — vivid pink/red, visible as jaw opens
+            if (jawAngle > 0.02) {
+                const mOpen = Math.min(1, jawAngle / MAX_JAW_ANGLE);
+                ctx.save();
+                ctx.globalAlpha = mOpen * 0.95;
+                const mG = ctx.createLinearGradient(hingeX, 0, H + 4, 0);
+                mG.addColorStop(0,   '#aa2222');
+                mG.addColorStop(0.5, '#ee4444');
+                mG.addColorStop(1,   '#cc3333');
+                ctx.fillStyle = mG;
+                ctx.beginPath();
+                ctx.moveTo(hingeX + 4, -N * 0.06);
+                ctx.bezierCurveTo(H * 0.28, N * 0.62 * mOpen, H * 0.72, N * 0.5 * mOpen, H + 3, N * 0.03);
+                ctx.bezierCurveTo(H * 0.72, -N * 0.04, H * 0.28, -N * 0.04, hingeX + 4, -N * 0.06);
+                ctx.closePath();
+                ctx.fill();
+                ctx.restore();
+            }
+
+            // Lower teeth
+            if (jawAngle > 0.1) {
+                const tA = Math.min(1, (jawAngle - 0.07) / (MAX_JAW_ANGLE * 0.55));
+                ctx.save();
+                ctx.globalAlpha = tA;
+                ctx.fillStyle = '#f0e8cf';
+                const tCount = 7;
+                const tStartX = hingeX + 12;
+                const tSpace  = (H - tStartX - 10) / tCount;
+                for (let t = 0; t < tCount; t++) {
+                    const tx = tStartX + t * tSpace;
+                    const th = 3.5 + (t === 3 ? 1.5 : 0);
+                    ctx.beginPath();
+                    ctx.moveTo(tx, -1.5);
+                    ctx.lineTo(tx + 3.5, -1.5);
+                    ctx.lineTo(tx + 1.75, -(1.5 + th));
+                    ctx.closePath();
+                    ctx.fill();
+                }
+                ctx.restore();
+            }
+
+            ctx.restore(); // end lower jaw rotation
+
+            // ===== UPPER SKULL =====
+            // Neck junction
+            const nkG = ctx.createRadialGradient(-N * 0.5, 0, 0, 0, 0, N);
+            nkG.addColorStop(0,   '#4d8a4d');
+            nkG.addColorStop(0.6, '#2d5a2d');
+            nkG.addColorStop(1,   '#1a3a1a');
+            ctx.fillStyle = nkG;
+            ctx.beginPath();
+            ctx.ellipse(-N * 0.5, 0, N * 0.75, N * 0.9, 0, 0, Math.PI * 2);
             ctx.fill();
 
-            // Snout
-            ctx.fillStyle = '#4a8a4a';
+            // Main skull — triangular wedge with bezier curves
+            const skG = ctx.createLinearGradient(hingeX - N * 0.3, -N, H + 7, 0);
+            skG.addColorStop(0,   '#3a7a3a');
+            skG.addColorStop(0.3, '#5aaa5a');
+            skG.addColorStop(0.6, '#4a9a4a');
+            skG.addColorStop(1,   '#2d5a2d');
+            ctx.fillStyle = skG;
             ctx.beginPath();
-            ctx.ellipse(headSize, 0, headSize * 0.35, neckSize * 0.6, 0, 0, Math.PI * 2);
+            ctx.moveTo(hingeX - N * 0.25, -N * 1.08);
+            ctx.bezierCurveTo(H * 0.22, -N * 1.18, H * 0.82, -N * 0.58, H + 7, -N * 0.11);
+            ctx.lineTo(H + 7, N * 0.11);
+            ctx.bezierCurveTo(H * 0.82, N * 0.58, H * 0.22, N * 1.18, hingeX - N * 0.25, N * 1.08);
+            ctx.bezierCurveTo(-N * 0.7, N * 0.88, -N * 0.7, -N * 0.88, hingeX - N * 0.25, -N * 1.08);
+            ctx.closePath();
             ctx.fill();
+            ctx.strokeStyle = '#0a1a0a';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+
+            // Upper jaw / lip seam line
+            ctx.strokeStyle = '#0a1a0a';
+            ctx.lineWidth = 1.3;
+            ctx.beginPath();
+            ctx.moveTo(hingeX, 0);
+            ctx.bezierCurveTo(H * 0.3, N * 0.2, H * 0.8, N * 0.1, H + 6, 0);
+            ctx.stroke();
+
+            // Dorsal ridge / median head groove
+            ctx.save();
+            ctx.strokeStyle = 'rgba(8,30,8,0.45)';
+            ctx.lineWidth = 1.6;
+            ctx.beginPath();
+            ctx.moveTo(hingeX, -N * 0.28);
+            ctx.bezierCurveTo(H * 0.3, -N * 0.58, H * 0.72, -N * 0.46, H, -N * 0.1);
+            ctx.stroke();
+            ctx.restore();
+
+            // Head scale plate outlines (parietal + prefrontal)
+            ctx.save();
+            ctx.globalAlpha = 0.25;
+            ctx.strokeStyle = '#0d2b0d';
+            ctx.lineWidth = 0.9;
+            [-1, 1].forEach(side => {
+                ctx.beginPath();
+                ctx.ellipse(H * 0.18, side * N * 0.46, H * 0.24, N * 0.35, 0.12 * side, 0, Math.PI * 2);
+                ctx.stroke();
+            });
+            ctx.beginPath();
+            ctx.ellipse(H * 0.14, 0, H * 0.15, N * 0.28, 0, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
+
+            // Heat-sensing loreal pits (between eye and nostril)
+            ctx.fillStyle = '#0a1a0a';
+            [-1, 1].forEach(side => {
+                ctx.beginPath();
+                ctx.ellipse(H * 0.58, side * N * 0.66, 2.5, 1.7, 0, 0, Math.PI * 2);
+                ctx.fill();
+            });
 
             // Nostrils
-            ctx.fillStyle = '#1a3a1a';
-            ctx.beginPath();
-            ctx.ellipse(headSize + 8, -3, 2, 1.5, 0, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.beginPath();
-            ctx.ellipse(headSize + 8, 3, 2, 1.5, 0, 0, Math.PI * 2);
-            ctx.fill();
-
-            // Eyes
-            const eyeY = neckSize * 0.5;
-            const eyeSize = 6;
-
-            // Left eye
-            ctx.fillStyle = '#ffd700';
-            ctx.beginPath();
-            ctx.ellipse(headSize * 0.4, -eyeY, eyeSize, eyeSize * 0.8, 0, 0, Math.PI * 2);
-            ctx.fill();
-
-            ctx.fillStyle = '#000';
-            ctx.fillRect(headSize * 0.4 - 1.5, -eyeY - 4, 3, 8);
-
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-            ctx.beginPath();
-            ctx.arc(headSize * 0.4 - 2, -eyeY - 2, 2, 0, Math.PI * 2);
-            ctx.fill();
-
-            // Right eye
-            ctx.fillStyle = '#ffd700';
-            ctx.beginPath();
-            ctx.ellipse(headSize * 0.4, eyeY, eyeSize, eyeSize * 0.8, 0, 0, Math.PI * 2);
-            ctx.fill();
-
-            ctx.fillStyle = '#000';
-            ctx.fillRect(headSize * 0.4 - 1.5, eyeY - 4, 3, 8);
-
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-            ctx.beginPath();
-            ctx.arc(headSize * 0.4 - 2, eyeY - 2, 2, 0, Math.PI * 2);
-            ctx.fill();
-
-            // Head scales
-            ctx.globalAlpha = 0.3;
-            for (let i = 0; i < 8; i++) {
-                const scaleX = headSize * 0.2 + (i % 4) * 6;
-                const scaleY = (i < 4 ? -1 : 1) * (neckSize * 0.3);
-
-                ctx.fillStyle = '#2d5a2d';
+            ctx.fillStyle = '#0a1a0a';
+            [-1, 1].forEach(side => {
                 ctx.beginPath();
-                ctx.ellipse(scaleX, scaleY, 4, 3, 0, 0, Math.PI * 2);
+                ctx.ellipse(H * 0.84, side * N * 0.5, 2.8, 1.8, 0.35 * side, 0, Math.PI * 2);
                 ctx.fill();
-            }
-            ctx.globalAlpha = 1;
+            });
 
-            // Tongue (when near food)
-            if (food.x !== undefined && food.y !== undefined) {
-                if (Math.abs(snake[0].x - food.x) + Math.abs(snake[0].y - food.y) <= 2) {
-                    const tongueLength = 18 + Math.sin(animationFrame * 0.3) * 6;
-                    const tongueX = headSize + 10;
-
-                    ctx.strokeStyle = '#c41e3a';
-                    ctx.lineWidth = 2.5;
-                    ctx.lineCap = 'round';
-
+            // Upper fangs — emerge as jaw opens
+            if (jawAngle > 0.12) {
+                const fA = Math.min(1, (jawAngle - 0.08) / (MAX_JAW_ANGLE * 0.45));
+                ctx.save();
+                ctx.globalAlpha = fA;
+                ctx.fillStyle = '#f5edda';
+                [-1, 1].forEach(side => {
+                    const fy = side * N * 0.2;
                     ctx.beginPath();
-                    ctx.moveTo(headSize + 5, 0);
-                    ctx.lineTo(tongueX + tongueLength, 0);
-                    ctx.stroke();
-
-                    const forkLength = 6;
-                    ctx.lineWidth = 1.5;
+                    ctx.moveTo(H * 0.65 - 2.5, fy - 1);
+                    ctx.lineTo(H * 0.65 + 2.5, fy - 1);
+                    ctx.lineTo(H * 0.65, fy + side * 11);
+                    ctx.closePath();
+                    ctx.fill();
+                    // Fang groove
+                    ctx.strokeStyle = 'rgba(210,185,130,0.55)';
+                    ctx.lineWidth = 0.8;
                     ctx.beginPath();
-                    ctx.moveTo(tongueX + tongueLength, 0);
-                    ctx.lineTo(tongueX + tongueLength + forkLength, -4);
-                    ctx.moveTo(tongueX + tongueLength, 0);
-                    ctx.lineTo(tongueX + tongueLength + forkLength, 4);
+                    ctx.moveTo(H * 0.65, fy);
+                    ctx.lineTo(H * 0.65, fy + side * 9);
                     ctx.stroke();
-                }
+                });
+                ctx.restore();
             }
 
-            ctx.restore();
+            // ===== EYES with vertical slit pupils =====
+            const eyeX = H * 0.33;
+            const eyeR = 5.8;
+            [-1, 1].forEach(side => {
+                const ey = side * N * 0.64;
+
+                // Eye socket depression
+                ctx.fillStyle = '#182818';
+                ctx.beginPath();
+                ctx.arc(eyeX, ey, eyeR + 2.8, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Iris — amber/gold radial gradient
+                const irisG = ctx.createRadialGradient(eyeX - 1.2, ey - 1.4, 0, eyeX, ey, eyeR);
+                irisG.addColorStop(0,    '#f0d040');
+                irisG.addColorStop(0.5,  '#c8a010');
+                irisG.addColorStop(0.82, '#9a7000');
+                irisG.addColorStop(1,    '#504000');
+                ctx.fillStyle = irisG;
+                ctx.beginPath();
+                ctx.arc(eyeX, ey, eyeR, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.strokeStyle = '#1a1000';
+                ctx.lineWidth = 0.9;
+                ctx.stroke();
+
+                // Vertical slit pupil
+                ctx.fillStyle = '#080808';
+                ctx.save();
+                ctx.translate(eyeX, ey);
+                ctx.beginPath();
+                ctx.ellipse(0, 0, eyeR * 0.24, eyeR * 0.82, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+
+                // Spectacle scale rim
+                ctx.strokeStyle = 'rgba(190,230,190,0.2)';
+                ctx.lineWidth = 1.3;
+                ctx.beginPath();
+                ctx.arc(eyeX, ey, eyeR + 1.2, 0, Math.PI * 2);
+                ctx.stroke();
+
+                // Catchlight
+                ctx.fillStyle = 'rgba(255,255,255,0.75)';
+                ctx.beginPath();
+                ctx.arc(eyeX - 1.8, ey - 2, 1.9, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // ===== TONGUE =====
+            // Always shows faint flicker; fully extends near food or when jaw is open
+            const foodDist = (food.x !== undefined)
+                ? Math.abs(snake[0].x - food.x) + Math.abs(snake[0].y - food.y)
+                : 999;
+            const tongueVisible = jawAngle > 0.06 || foodDist <= 5;
+            if (tongueVisible) {
+                const tOpacity = Math.max(
+                    jawAngle > 0.06 ? jawAngle / MAX_JAW_ANGLE : 0,
+                    foodDist <= 5 ? 0.88 : 0.45
+                );
+                const flick     = Math.sin(animationFrame * 0.48) * 4;
+                const baseLen   = 13 + Math.abs(Math.sin(animationFrame * 0.32)) * 10;
+                const forkLen   = 7.5;
+                const tBase     = H + 6;
+
+                ctx.save();
+                ctx.globalAlpha = tOpacity;
+                ctx.strokeStyle = '#c41e3a';
+                ctx.lineCap = 'round';
+
+                // Tongue shaft
+                ctx.lineWidth = 2.2;
+                ctx.beginPath();
+                ctx.moveTo(tBase - 2, 0);
+                ctx.lineTo(tBase + baseLen * 0.62, flick * 0.22);
+                ctx.stroke();
+
+                // Forked tips
+                ctx.lineWidth = 1.6;
+                ctx.beginPath();
+                ctx.moveTo(tBase + baseLen * 0.62, flick * 0.22);
+                ctx.lineTo(tBase + baseLen + forkLen, -5.5 + flick);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(tBase + baseLen * 0.62, flick * 0.22);
+                ctx.lineTo(tBase + baseLen + forkLen,  5.5 + flick);
+                ctx.stroke();
+                ctx.restore();
+            }
+
+            ctx.restore(); // end head transform
         }
 
         // ==================== FOOD RENDERING ====================
@@ -1355,9 +1648,23 @@
             }
         }
 
+        function updateJawAngle() {
+            if (food.x === undefined || gameState !== 'playing') {
+                jawAngle = Math.max(0, jawAngle - 0.06);
+                return;
+            }
+            const dist = Math.abs(snake[0].x - food.x) + Math.abs(snake[0].y - food.y);
+            const targetAngle = dist <= JAW_OPEN_DISTANCE
+                ? MAX_JAW_ANGLE * (1 - dist / (JAW_OPEN_DISTANCE + 1))
+                : 0;
+            jawAngle += (targetAngle - jawAngle) * 0.22;
+            if (jawAngle < 0.008) jawAngle = 0;
+        }
+
         function update() {
             direction.x = nextDirection.x;
             direction.y = nextDirection.y;
+            updateJawAngle();
 
             let headX = snake[0].x + direction.x;
             let headY = snake[0].y + direction.y;
@@ -1495,6 +1802,7 @@
             accumulatedTime = 0;
             levelUpBurst = null;
             deathFlashAlpha = 0;
+            jawAngle = 0;
 
             startScreen.style.display = 'none';
             gameOverScreen.style.display = 'none';
