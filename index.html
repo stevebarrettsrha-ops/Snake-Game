@@ -1349,6 +1349,24 @@
         }
 
         // ==================== FOOD RENDERING ====================
+        const foodSpriteCache = {};
+        function getFoodSprite(type) {
+            if (foodSpriteCache[type]) return foodSpriteCache[type];
+            const EMOJI_MAP = { APPLE: '🍎', MOUSE: '🐭', RABBIT: '🐰' };
+            const SIZE = Math.round(TILE_SIZE * 1.4);
+            const PAD  = 8;
+            const w    = SIZE + PAD * 2;
+            const oc   = document.createElement('canvas');
+            oc.width = w; oc.height = w;
+            const sc   = oc.getContext('2d');
+            sc.font = `${SIZE}px serif`;
+            sc.textAlign = 'center';
+            sc.textBaseline = 'middle';
+            sc.fillText(EMOJI_MAP[type], w / 2, w / 2);
+            foodSpriteCache[type] = oc;
+            return oc;
+        }
+
         function drawFoodGlow(fx, fy, r, g, b, baseRadius) {
             // Breathing glow ring around food
             const pulse = 0.5 + 0.5 * Math.sin(animationFrame * 0.12);
@@ -1366,142 +1384,69 @@
         function drawRealisticFood() {
             if (food.x === undefined || food.y === undefined) return;
 
-            const fx = food.x * TILE_SIZE + TILE_SIZE / 2;
-            const fy = food.y * TILE_SIZE + TILE_SIZE / 2;
+            const fx     = food.x * TILE_SIZE + TILE_SIZE / 2;
+            const fy     = food.y * TILE_SIZE + TILE_SIZE / 2;
+            const sprite = getFoodSprite(food.type);
+            const sw     = sprite.width;
 
             if (food.type === 'RABBIT') {
                 drawFoodGlow(fx, fy, 240, 240, 200, 16);
-                const hop = Math.abs(Math.sin(animationFrame * 0.15)) * 15;
-                const ry = fy - hop;
+                const hopT       = Math.abs(Math.sin(animationFrame * 0.15));
+                const hop        = hopT * 15;
+                const ry         = fy - hop;
+                const shadowScaleX = 1 - hopT * 0.55;
+                const peakScale  = 1 + hopT * 0.12;
 
-                // Shadow
-                ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+                // Dynamic shadow — shrinks as rabbit rises
+                ctx.save();
+                ctx.fillStyle = 'rgba(0,0,0,0.35)';
                 ctx.beginPath();
-                ctx.ellipse(fx, fy + 2, 18, 8, 0, 0, Math.PI * 2);
+                ctx.ellipse(fx, fy + 3, 16 * shadowScaleX, 6 * shadowScaleX, 0, 0, Math.PI * 2);
                 ctx.fill();
+                ctx.restore();
 
-                // Body
-                const bodyGradient = ctx.createRadialGradient(fx - 5, ry - 5, 0, fx, ry, 15);
-                bodyGradient.addColorStop(0, '#f5f5f5');
-                bodyGradient.addColorStop(1, '#d0d0d0');
-                ctx.fillStyle = bodyGradient;
-                ctx.beginPath();
-                ctx.ellipse(fx, ry, 16, 20, 0, 0, Math.PI * 2);
-                ctx.fill();
-
-                // Head
-                ctx.beginPath();
-                ctx.ellipse(fx, ry - 15, 12, 14, 0, 0, Math.PI * 2);
-                ctx.fill();
-
-                // Ears
-                ctx.fillStyle = '#e8e8e8';
-                ctx.beginPath();
-                ctx.ellipse(fx - 6, ry - 25, 4, 12, -0.2, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.beginPath();
-                ctx.ellipse(fx + 6, ry - 25, 4, 12, 0.2, 0, Math.PI * 2);
-                ctx.fill();
-
-                // Nose
-                ctx.fillStyle = '#ffb6c1';
-                ctx.beginPath();
-                ctx.arc(fx, ry - 14, 1.5, 0, Math.PI * 2);
-                ctx.fill();
-
-                // Tail
-                ctx.fillStyle = '#fff';
-                ctx.beginPath();
-                ctx.arc(fx - 12, ry + 8, 5, 0, Math.PI * 2);
-                ctx.fill();
+                // Emoji sprite with scale pulse at hop peak
+                ctx.save();
+                ctx.translate(fx, ry);
+                ctx.scale(peakScale, peakScale);
+                ctx.drawImage(sprite, -sw / 2, -sw / 2, sw, sw);
+                ctx.restore();
 
             } else if (food.type === 'MOUSE') {
                 drawFoodGlow(fx, fy, 160, 160, 160, 12);
+                // Lateral quiver simulates nervous twitching
+                const quiver = Math.sin(animationFrame * 0.9) * 0.8;
+
                 // Shadow
-                ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+                ctx.fillStyle = 'rgba(0,0,0,0.3)';
                 ctx.beginPath();
-                ctx.ellipse(fx, fy + 2, 15, 6, 0, 0, Math.PI * 2);
+                ctx.ellipse(fx + quiver, fy + 3, 14, 5, 0, 0, Math.PI * 2);
                 ctx.fill();
 
-                // Body
-                const mouseGradient = ctx.createRadialGradient(fx - 3, fy - 3, 0, fx, fy, 12);
-                mouseGradient.addColorStop(0, '#9e9e9e');
-                mouseGradient.addColorStop(1, '#616161');
-                ctx.fillStyle = mouseGradient;
-                ctx.beginPath();
-                ctx.ellipse(fx, fy, 14, 10, 0, 0, Math.PI * 2);
-                ctx.fill();
-
-                // Head
-                ctx.beginPath();
-                ctx.ellipse(fx - 10, fy, 8, 9, 0, 0, Math.PI * 2);
-                ctx.fill();
-
-                // Ear
-                ctx.fillStyle = '#757575';
-                ctx.beginPath();
-                ctx.arc(fx - 12, fy - 6, 4, 0, Math.PI * 2);
-                ctx.fill();
-
-                // Eye
-                ctx.fillStyle = '#000';
-                ctx.beginPath();
-                ctx.arc(fx - 13, fy - 1, 1.5, 0, Math.PI * 2);
-                ctx.fill();
-
-                // Tail
-                ctx.strokeStyle = '#757575';
-                ctx.lineWidth = 2;
-                ctx.beginPath();
-                ctx.moveTo(fx + 14, fy);
-                ctx.quadraticCurveTo(fx + 20, fy - 5, fx + 25, fy);
-                ctx.stroke();
+                // Emoji sprite with quiver offset
+                ctx.save();
+                ctx.translate(fx + quiver, fy);
+                ctx.drawImage(sprite, -sw / 2, -sw / 2, sw, sw);
+                ctx.restore();
 
             } else {
-                // Apple
+                // Apple — gentle bob + subtle scale pulse
                 drawFoodGlow(fx, fy, 229, 57, 53, 13);
+                const bob   = Math.sin(animationFrame * 0.07) * 2;
+                const pulse = 1 + Math.sin(animationFrame * 0.09) * 0.04;
+
                 // Shadow
-                ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+                ctx.fillStyle = 'rgba(0,0,0,0.3)';
                 ctx.beginPath();
-                ctx.ellipse(fx, fy + 3, 12, 5, 0, 0, Math.PI * 2);
+                ctx.ellipse(fx, fy + 3, 11, 4, 0, 0, Math.PI * 2);
                 ctx.fill();
 
-                // Apple body
-                const appleGradient = ctx.createRadialGradient(fx - 5, fy - 5, 0, fx, fy, 14);
-                appleGradient.addColorStop(0, '#ff6b6b');
-                appleGradient.addColorStop(0.6, '#e53935');
-                appleGradient.addColorStop(1, '#c62828');
-                ctx.fillStyle = appleGradient;
-                ctx.beginPath();
-                ctx.arc(fx, fy, 13, 0, Math.PI * 2);
-                ctx.fill();
-
-                // Top indent
-                ctx.fillStyle = '#c62828';
-                ctx.beginPath();
-                ctx.arc(fx, fy - 10, 4, 0, Math.PI * 2);
-                ctx.fill();
-
-                // Highlight
-                ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
-                ctx.beginPath();
-                ctx.arc(fx - 5, fy - 6, 5, 0, Math.PI * 2);
-                ctx.fill();
-
-                // Stem
-                ctx.strokeStyle = '#5d4037';
-                ctx.lineWidth = 3;
-                ctx.lineCap = 'round';
-                ctx.beginPath();
-                ctx.moveTo(fx, fy - 13);
-                ctx.lineTo(fx + 2, fy - 18);
-                ctx.stroke();
-
-                // Leaf
-                ctx.fillStyle = '#7cb342';
-                ctx.beginPath();
-                ctx.ellipse(fx + 5, fy - 16, 5, 3, 0.5, 0, Math.PI * 2);
-                ctx.fill();
+                // Emoji sprite with bob and scale pulse
+                ctx.save();
+                ctx.translate(fx, fy + bob);
+                ctx.scale(pulse, pulse);
+                ctx.drawImage(sprite, -sw / 2, -sw / 2, sw, sw);
+                ctx.restore();
             }
         }
 
