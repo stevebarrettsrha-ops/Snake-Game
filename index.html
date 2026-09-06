@@ -3,34 +3,25 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Serpent — a field guide in ten biomes</title>
-<meta name="description" content="Serpent: a snake game with ten procedurally rendered biomes, ten real snake species and six hand-drawn prey animals. One file, no dependencies.">
+<title>Serpent — 150 levels across ten biomes</title>
+<meta name="description" content="Serpent: a snake game with 150 hand-scheduled levels, lethal obstacles, ten procedurally rendered biomes, ten real snake species and six drawn prey animals. One file, no dependencies.">
 <meta name="theme-color" content="#12110b">
-<meta property="og:title" content="Serpent — a field guide in ten biomes">
-<meta property="og:description" content="Ten biomes, ten snake species, six prey animals. Every pixel drawn by code.">
+<meta property="og:title" content="Serpent — 150 levels across ten biomes">
+<meta property="og:description" content="150 levels, ten biomes, ten snake species. Every pixel drawn by code.">
 <meta property="og:type" content="website">
 <style>
   *{margin:0;padding:0;box-sizing:border-box}
 
   :root{
-    --ground:#100f0a;
-    --case:#1b1912;
-    --case-hi:#26231a;
-    --ink:#f2ece0;
-    --muted:#9a9179;
-    --rule:#38342a;
-    --brass:#d6ab49;
-    --brass-dim:#8a6c25;
-    --venom:#d4573a;
+    --ground:#100f0a; --case:#1b1912; --case-hi:#26231a;
+    --ink:#f2ece0; --muted:#9a9179; --rule:#38342a;
+    --brass:#d6ab49; --brass-dim:#8a6c25; --venom:#d4573a; --open:#7fd8a0;
   }
 
   body{
-    min-height:100vh;
-    display:flex; align-items:center; justify-content:center;
+    min-height:100vh; display:flex; align-items:center; justify-content:center;
     padding:22px 14px;
-    background:
-      radial-gradient(1100px 620px at 50% -8%, #221f16 0%, rgba(34,31,22,0) 62%),
-      var(--ground);
+    background:radial-gradient(1100px 620px at 50% -8%, #221f16 0%, rgba(34,31,22,0) 62%), var(--ground);
     color:var(--ink);
     font-family:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
     -webkit-font-smoothing:antialiased;
@@ -39,17 +30,13 @@
   .case{
     width:100%; max-width:772px;
     background:linear-gradient(168deg,var(--case-hi),var(--case));
-    border:1px solid var(--rule);
-    border-radius:4px;
-    padding:22px;
+    border:1px solid var(--rule); border-radius:4px; padding:22px;
     box-shadow:0 50px 90px rgba(0,0,0,.72), inset 0 1px 0 rgba(255,255,255,.045);
   }
 
-  /* ---- masthead ---- */
   .masthead{
     display:flex; align-items:baseline; justify-content:space-between;
-    gap:16px; flex-wrap:wrap; padding-bottom:14px;
-    border-bottom:1px solid var(--rule);
+    gap:16px; flex-wrap:wrap; padding-bottom:14px; border-bottom:1px solid var(--rule);
   }
   .wordmark{font-size:23px; font-weight:600; letter-spacing:.055em; line-height:1}
   .wordmark span{color:var(--brass)}
@@ -58,133 +45,135 @@
     font-size:10px; letter-spacing:.2em; text-transform:uppercase; color:var(--muted);
   }
 
-  /* ---- readouts ---- */
   .readouts{display:flex; gap:8px; margin:14px 0 10px; flex-wrap:wrap}
   .readout{
-    flex:1 1 96px; min-width:0;
-    background:rgba(0,0,0,.30);
-    border:1px solid var(--rule);
-    padding:9px 12px;
+    flex:1 1 96px; min-width:0; background:rgba(0,0,0,.30);
+    border:1px solid var(--rule); padding:9px 12px;
   }
   .readout .k{
-    font-family:ui-monospace,Menlo,monospace; font-size:9.5px;
-    letter-spacing:.17em; text-transform:uppercase; color:var(--muted);
-    display:block; margin-bottom:3px;
+    font-family:ui-monospace,Menlo,monospace; font-size:9.5px; letter-spacing:.17em;
+    text-transform:uppercase; color:var(--muted); display:block; margin-bottom:3px;
   }
   .readout .v{
     font-size:22px; font-weight:600; color:var(--brass);
-    font-variant-numeric:tabular-nums; line-height:1.1;
-    display:block;
+    font-variant-numeric:tabular-nums; line-height:1.1; display:block;
   }
+  .readout .v small{font-size:12px; color:var(--muted); font-weight:400}
   .readout .v.pop{animation:pop .34s ease-out}
-  @keyframes pop{
-    0%{transform:scale(1)} 42%{transform:scale(1.28); color:#fff8e2} 100%{transform:scale(1)}
-  }
+  @keyframes pop{0%{transform:scale(1)}42%{transform:scale(1.28);color:#fff8e2}100%{transform:scale(1)}}
 
-  /* ---- locale strip: the level's identity, always on screen ---- */
+  /* level identity strip */
   .locale{
-    display:flex; align-items:baseline; justify-content:space-between; gap:14px;
+    display:flex; align-items:baseline; justify-content:space-between; gap:12px;
     padding:8px 12px; background:rgba(0,0,0,.22);
     border:1px solid var(--rule); border-bottom:none;
   }
-  .locale .place{font-size:15px; font-weight:600; letter-spacing:.01em}
-  .locale .who{font-style:italic; font-size:13.5px; color:var(--muted); text-align:right}
+  .locale .place{font-size:15px; font-weight:600; display:flex; align-items:center; gap:9px}
+  .locale .who{font-style:italic; font-size:13px; color:var(--muted); text-align:right}
+  .badge{
+    font-family:ui-monospace,Menlo,monospace; font-size:8.5px; letter-spacing:.14em;
+    text-transform:uppercase; color:var(--open); border:1px solid var(--open);
+    padding:2px 5px; border-radius:2px; font-weight:400;
+  }
 
-  .track{height:2px; background:rgba(0,0,0,.42); border:1px solid var(--rule); border-top:none}
+  /* prey goal track */
+  .goal{
+    display:flex; align-items:center; gap:10px; padding:6px 12px;
+    background:rgba(0,0,0,.30); border:1px solid var(--rule); border-bottom:none;
+    font-family:ui-monospace,Menlo,monospace; font-size:10px;
+    letter-spacing:.15em; text-transform:uppercase; color:var(--muted);
+  }
+  .goal b{color:var(--ink); font-weight:500; font-variant-numeric:tabular-nums}
+  .track{flex:1; height:4px; background:rgba(0,0,0,.5); border:1px solid var(--rule)}
   .track i{
     display:block; height:100%; width:0%;
     background:linear-gradient(90deg,var(--brass-dim),var(--brass));
-    transition:width .32s ease-out;
+    transition:width .28s ease-out;
   }
 
-  /* ---- board ---- */
   .board{position:relative; margin-top:10px; line-height:0}
   canvas{
     display:block; width:100%; height:auto;
-    border:1px solid var(--rule);
-    background:#0d0d09;
-    touch-action:none;
+    border:1px solid var(--rule); background:#0d0d09; touch-action:none;
   }
   canvas:focus-visible{outline:2px solid var(--brass); outline-offset:2px}
 
-  /* ---- overlays ---- */
   .overlay{
-    position:absolute; inset:0;
-    display:none; flex-direction:column; align-items:center; justify-content:center;
-    text-align:center; padding:30px;
-    background:rgba(8,9,7,.86);
-    backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px);
-    line-height:1.55;
+    position:absolute; inset:0; display:none;
+    flex-direction:column; align-items:center; justify-content:center;
+    text-align:center; padding:28px; background:rgba(8,9,7,.88);
+    backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px); line-height:1.55;
   }
   .overlay.show{display:flex}
   .overlay h2{
-    font-size:clamp(30px,6vw,46px); font-weight:600; letter-spacing:.01em;
-    margin-bottom:6px; text-wrap:balance;
+    font-size:clamp(28px,5.5vw,44px); font-weight:600; margin-bottom:6px; text-wrap:balance;
   }
-  .overlay .rule{width:52px; height:1px; background:var(--brass); margin:14px 0 16px}
-  .overlay p{font-size:15px; color:var(--muted); margin:3px 0}
+  .overlay .rule{width:52px;height:1px;background:var(--brass);margin:13px 0 15px}
+  .overlay p{font-size:15px;color:var(--muted);margin:3px 0}
+  .overlay b{color:var(--ink);font-weight:600}
   .overlay .cue{
     font-family:ui-monospace,Menlo,monospace; font-size:11px; letter-spacing:.16em;
-    text-transform:uppercase; color:var(--brass); margin-top:20px;
+    text-transform:uppercase; color:var(--brass); margin-top:18px;
   }
-  .overlay b{color:var(--ink); font-weight:600}
+
+  .picker{display:flex;gap:8px;align-items:center;margin-top:18px;flex-wrap:wrap;justify-content:center}
+  select{
+    font-family:ui-monospace,Menlo,monospace; font-size:12px;
+    background:#14140f; color:var(--ink); border:1px solid var(--rule);
+    padding:9px 10px; max-width:230px;
+  }
+  select:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
 
   .quarry{
-    margin-top:20px; display:grid; grid-template-columns:1fr 1fr; gap:3px 22px;
+    margin-top:18px; display:grid; grid-template-columns:1fr 1fr; gap:2px 22px;
     font-size:13px; color:var(--muted); text-align:left;
   }
   .quarry > div{
-    display:flex; align-items:baseline; justify-content:space-between; gap:16px;
-    border-bottom:1px dotted rgba(154,145,121,.28); padding-bottom:2px;
+    display:flex;align-items:baseline;justify-content:space-between;gap:16px;
+    border-bottom:1px dotted rgba(154,145,121,.28);padding-bottom:2px;
   }
   .quarry span{
-    font-family:ui-monospace,Menlo,monospace; font-size:11.5px;
-    color:var(--brass-dim); font-variant-numeric:tabular-nums;
+    font-family:ui-monospace,Menlo,monospace;font-size:11.5px;
+    color:var(--brass-dim);font-variant-numeric:tabular-nums;
   }
 
-  /* ---- controls ---- */
   .foot{
     display:flex; align-items:center; justify-content:space-between;
-    gap:14px; flex-wrap:wrap; margin-top:16px;
-    padding-top:14px; border-top:1px solid var(--rule);
+    gap:14px; flex-wrap:wrap; margin-top:16px; padding-top:14px; border-top:1px solid var(--rule);
   }
   .keys{
     font-family:ui-monospace,Menlo,monospace; font-size:10.5px;
     letter-spacing:.11em; color:var(--muted); text-transform:uppercase;
   }
-  .keys b{color:var(--ink); font-weight:500}
-  .btns{display:flex; gap:8px}
+  .keys b{color:var(--ink);font-weight:500}
+  .btns{display:flex;gap:8px}
   button{
-    font-family:ui-monospace,Menlo,monospace;
-    font-size:10.5px; letter-spacing:.16em; text-transform:uppercase;
-    padding:10px 17px; cursor:pointer;
-    color:var(--ink); background:transparent;
-    border:1px solid var(--rule);
-    transition:border-color .18s, color .18s, background .18s;
+    font-family:ui-monospace,Menlo,monospace; font-size:10.5px;
+    letter-spacing:.16em; text-transform:uppercase; padding:10px 17px; cursor:pointer;
+    color:var(--ink); background:transparent; border:1px solid var(--rule);
+    transition:border-color .18s,color .18s,background .18s;
   }
-  button:hover{border-color:var(--brass); color:var(--brass); background:rgba(214,171,73,.07)}
-  button:focus-visible{outline:2px solid var(--brass); outline-offset:2px}
-  button.primary{border-color:var(--brass-dim); color:var(--brass)}
+  button:hover{border-color:var(--brass);color:var(--brass);background:rgba(214,171,73,.07)}
+  button:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+  button.primary{border-color:var(--brass-dim);color:var(--brass)}
   button.primary:hover{background:rgba(214,171,73,.13)}
 
   .sr-only{
-    position:absolute; width:1px; height:1px; padding:0; margin:-1px;
-    overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0;
+    position:absolute;width:1px;height:1px;padding:0;margin:-1px;
+    overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;
   }
 
   @media (max-width:600px){
     .case{padding:14px}
     .readout{padding:7px 9px}
     .readout .v{font-size:18px}
-    .locale{flex-direction:column; gap:2px}
+    .locale{flex-direction:column;gap:3px;align-items:flex-start}
     .locale .who{text-align:left}
     .foot{justify-content:center}
     .keys{display:none}
     .quarry{grid-template-columns:1fr}
   }
-  @media (prefers-reduced-motion:reduce){
-    *{animation:none !important; transition:none !important}
-  }
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
 <body>
@@ -192,7 +181,7 @@
 
   <div class="masthead">
     <div class="wordmark">SERPENT<span>.</span></div>
-    <div class="strap">A field guide in ten biomes</div>
+    <div class="strap">150 levels · ten biomes</div>
   </div>
 
   <div class="readouts" role="status" aria-live="polite">
@@ -202,7 +191,7 @@
     </div>
     <div class="readout">
       <span class="k" id="k-level">Level</span>
-      <span class="v" id="level" aria-labelledby="k-level">1</span>
+      <span class="v" aria-labelledby="k-level"><span id="level">1</span><small> / 150</small></span>
     </div>
     <div class="readout">
       <span class="k" id="k-best">Best</span>
@@ -211,10 +200,17 @@
   </div>
 
   <div class="locale">
-    <div class="place" id="biomeName">Wildflower Meadow</div>
-    <div class="who" id="speciesName">Grass Snake</div>
+    <div class="place">
+      <span id="levelName">First Light</span>
+      <span class="badge" id="openEdge" hidden>Edges open</span>
+    </div>
+    <div class="who"><span id="biomeName">Wildflower Meadow</span> · <span id="speciesName">Grass Snake</span></div>
   </div>
-  <div class="track"><i id="progressFill"></i></div>
+
+  <div class="goal">
+    <span>Prey <b id="goalCount">0</b> / <b id="goalNeed">4</b></span>
+    <span class="track"><i id="goalFill"></i></span>
+  </div>
 
   <div class="board">
     <canvas id="gameCanvas" width="700" height="700" tabindex="0"
@@ -222,9 +218,9 @@
 
     <div class="overlay" id="startScreen" role="dialog" aria-labelledby="start-title">
       <h2 id="start-title">Serpent</h2>
-      <p>Ten biomes. Ten snakes. Six animals worth catching.</p>
+      <p>150 levels. Ten biomes. Walls kill.</p>
       <div class="rule"></div>
-      <p>Walls do not kill you — the map wraps. <b>You do.</b></p>
+      <p>Eat the level's quota of animals to move on.</p>
       <div class="quarry">
         <div>Windfall apple <span>10</span></div>
         <div>Quail egg <span>15</span></div>
@@ -233,24 +229,32 @@
         <div>Sand lizard <span>40</span></div>
         <div>Young rabbit <span>60</span></div>
       </div>
+      <div class="picker" id="continueWrap" hidden>
+        <select id="levelPick" aria-label="Choose a level you have reached"></select>
+        <button id="continueBtn" class="primary">Continue</button>
+        <button id="newGameBtn">From level 1</button>
+      </div>
       <p class="cue">Press space to begin</p>
     </div>
 
     <div class="overlay" id="gameOverScreen" role="dialog" aria-labelledby="over-title">
-      <h2 id="over-title">You bit yourself</h2>
+      <h2 id="over-title">Caught out</h2>
       <div class="rule"></div>
-      <p>Final score <b id="finalScore">0</b></p>
-      <p>Reached level <b id="finalLevel">1</b> — <b id="finalBiome">Wildflower Meadow</b></p>
-      <p class="cue">Press space to try again</p>
+      <p id="finalLevelName">—</p>
+      <p>Level <b id="finalLevel">1</b> · score <b id="finalScore">0</b></p>
+      <div class="picker">
+        <button id="retryBtn" class="primary">Retry level</button>
+      </div>
+      <p class="cue">Press space to retry</p>
     </div>
   </div>
 
   <div class="foot">
     <div class="keys"><b>Arrows</b> or <b>WASD</b> steer &nbsp;·&nbsp; <b>Space</b> starts and pauses</div>
     <div class="btns">
-      <button id="startBtn" class="primary" aria-label="Start game">Start</button>
+      <button id="startBtn" class="primary" aria-label="Start or retry">Start</button>
       <button id="pauseBtn" aria-label="Pause or resume game">Pause</button>
-      <button id="restartBtn" aria-label="Reset game">Reset</button>
+      <button id="restartBtn" aria-label="Back to the menu">Menu</button>
     </div>
   </div>
 
@@ -2687,6 +2691,771 @@ function paintBiome(c, W, biomeIndex) {
     if (B.haze) { c.fillStyle = B.haze; c.fillRect(0, 0, W, W); }
 }
 
+/* ==========================================================================
+   WALLS
+   Obstacles are static, so they are painted once per level into an offscreen
+   layer: their shadows go down onto the ground, and the walls themselves are
+   drawn back over the top of the snake so a body pressed against masonry is
+   occluded by it rather than floating over it.
+
+   Each cell is drawn edge-aware — a bevel appears only on the sides that face
+   open ground — so a run of cells reads as one continuous wall rather than a
+   row of tiles.
+   ========================================================================== */
+const WALLS = {
+    meadow:     { base:'#8f8c79', hi:'#c6c2ac', lo:'#4b493d', style:'stone',     moss:'#6d8a3a' },
+    rainforest: { base:'#4d4636', hi:'#736950', lo:'#221d14', style:'stone',     moss:'#59a034' },
+    desert:     { base:'#c3a97a', hi:'#ead4a6', lo:'#78633e', style:'sandstone' },
+    woodland:   { base:'#7f7767', hi:'#aca38f', lo:'#413b31', style:'stone',     moss:'#6d7c3c' },
+    taiga:      { base:'#bcd6e4', hi:'#f2fbff', lo:'#6d8ea3', style:'ice' },
+    bayou:      { base:'#4c4231', hi:'#6f5f45', lo:'#1f1a12', style:'wood',      moss:'#4f7a30' },
+    savanna:    { base:'#ab9673', hi:'#d8c097', lo:'#615138', style:'sandstone' },
+    ashlands:   { base:'#352e29', hi:'#584d46', lo:'#120f0e', style:'basalt',    glow:'#ff7a2a' },
+    glowcave:   { base:'#2c3654', hi:'#48587d', lo:'#0f1524', style:'crystal',   glow:'#66d8ff' },
+    abyss:      { base:'#191730', hi:'#332e57', lo:'#06050c', style:'void',      glow:'#a878ff' }
+};
+
+/* Soft contact shadow cast by the wall mass onto the ground. Baked into the
+   background so the snake passes over it. */
+function paintWallShadows(c, blocked, n, tile) {
+    c.save();
+    c.translate(tile * 0.16, tile * 0.22);
+    c.fillStyle = 'rgba(0,0,0,0.34)';
+    for (let y = 0; y < n; y++)
+        for (let x = 0; x < n; x++)
+            if (blocked[y * n + x]) c.fillRect(x * tile - 1, y * tile - 1, tile + 2, tile + 2);
+    c.restore();
+}
+
+function paintWalls(c, blocked, n, tile, biomeId, seed) {
+    const W = WALLS[biomeId] || WALLS.meadow;
+    const rng = makeRng(seed || 99);
+    const at = (x, y) => (x < 0 || y < 0 || x >= n || y >= n) ? 1 : blocked[y * n + x];
+
+    for (let y = 0; y < n; y++) {
+        for (let x = 0; x < n; x++) {
+            if (!blocked[y * n + x]) continue;
+            const px = x * tile, py = y * tile;
+            const up = at(x, y - 1), dn = at(x, y + 1),
+                  lf = at(x - 1, y), rt = at(x + 1, y);
+
+            /* body */
+            const g = c.createLinearGradient(px, py, px + tile, py + tile);
+            g.addColorStop(0, shade(W.base, 10));
+            g.addColorStop(0.5, W.base);
+            g.addColorStop(1, shade(W.base, -14));
+            c.fillStyle = g;
+            c.fillRect(px, py, tile + 0.5, tile + 0.5);
+
+            /* grain / speckle, per style */
+            c.save();
+            c.beginPath(); c.rect(px, py, tile, tile); c.clip();
+            if (W.style === 'sandstone' || W.style === 'wood') {
+                const horiz = W.style === 'sandstone';
+                c.strokeStyle = 'rgba(0,0,0,0.13)';
+                c.lineWidth = 1;
+                for (let i = 0; i < 4; i++) {
+                    const t = (i + rng() * 0.7) / 4;
+                    c.beginPath();
+                    if (horiz) { c.moveTo(px, py + t * tile); c.lineTo(px + tile, py + t * tile); }
+                    else { c.moveTo(px + t * tile, py); c.lineTo(px + t * tile, py + tile); }
+                    c.stroke();
+                }
+            } else if (W.style === 'ice') {
+                c.strokeStyle = 'rgba(255,255,255,0.55)';
+                c.lineWidth = 1.1;
+                for (let i = 0; i < 3; i++) {
+                    c.beginPath();
+                    c.moveTo(px + rng() * tile, py);
+                    c.lineTo(px + rng() * tile, py + tile);
+                    c.stroke();
+                }
+                c.fillStyle = 'rgba(150,205,240,0.25)';
+                c.fillRect(px, py, tile, tile);
+            } else if (W.style === 'crystal' || W.style === 'void') {
+                c.strokeStyle = rgba(W.glow, 0.30);
+                c.lineWidth = 1;
+                for (let i = 0; i < 2; i++) {
+                    c.beginPath();
+                    c.moveTo(px + rng() * tile, py + rng() * tile);
+                    c.lineTo(px + rng() * tile, py + rng() * tile);
+                    c.stroke();
+                }
+            } else {
+                for (let i = 0; i < 9; i++) {
+                    c.fillStyle = rng() > 0.5 ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.10)';
+                    c.beginPath();
+                    c.arc(px + rng() * tile, py + rng() * tile, 0.8 + rng() * 1.7, 0, Math.PI * 2);
+                    c.fill();
+                }
+            }
+            c.restore();
+
+            /* Molten seams: only between two basalt cells, so the glow reads as
+               coming from inside the mass rather than off its outer face. */
+            if (W.glow && W.style === 'basalt') {
+                c.strokeStyle = rgba(W.glow, 0.55);
+                c.lineWidth = 1.6;
+                if (rt && rng() > 0.45) { c.beginPath(); c.moveTo(px + tile, py + 2); c.lineTo(px + tile, py + tile - 2); c.stroke(); }
+                if (dn && rng() > 0.45) { c.beginPath(); c.moveTo(px + 2, py + tile); c.lineTo(px + tile - 2, py + tile); c.stroke(); }
+            }
+
+            /* bevel: light where the wall faces up/left into open ground,
+               shadow where it faces down/right */
+            const b = Math.max(2, tile * 0.14);
+            c.fillStyle = rgba(W.hi, 0.85);
+            if (!up) c.fillRect(px, py, tile, b);
+            if (!lf) c.fillRect(px, py, b, tile);
+            c.fillStyle = rgba(W.lo, 0.85);
+            if (!dn) c.fillRect(px, py + tile - b, tile, b);
+            if (!rt) c.fillRect(px + tile - b, py, b, tile);
+
+            /* moss gathers on the upward-facing lip */
+            if (W.moss && !up && rng() > 0.45) {
+                c.fillStyle = rgba(W.moss, 0.42 + rng() * 0.3);
+                const mw = tile * (0.3 + rng() * 0.55);
+                c.fillRect(px + rng() * (tile - mw), py, mw, b * (0.8 + rng()));
+            }
+
+            /* crisp dark edge on every open-facing side */
+            c.strokeStyle = 'rgba(0,0,0,0.5)';
+            c.lineWidth = 1;
+            c.beginPath();
+            if (!up) { c.moveTo(px, py + 0.5); c.lineTo(px + tile, py + 0.5); }
+            if (!dn) { c.moveTo(px, py + tile - 0.5); c.lineTo(px + tile, py + tile - 0.5); }
+            if (!lf) { c.moveTo(px + 0.5, py); c.lineTo(px + 0.5, py + tile); }
+            if (!rt) { c.moveTo(px + tile - 0.5, py); c.lineTo(px + tile - 0.5, py + tile); }
+            c.stroke();
+        }
+    }
+
+    /* outward glow for the luminous materials, drawn last so it sits over the
+       neighbouring ground */
+    if (W.glow && W.style !== 'basalt') {
+        c.save();
+        c.globalCompositeOperation = 'lighter';
+        for (let y = 0; y < n; y++)
+            for (let x = 0; x < n; x++) {
+                if (!blocked[y * n + x]) continue;
+                if (at(x, y - 1) && at(x, y + 1) && at(x - 1, y) && at(x + 1, y)) continue;
+                const cx = x * tile + tile / 2, cy = y * tile + tile / 2;
+                const gg = c.createRadialGradient(cx, cy, 0, cx, cy, tile * 1.15);
+                gg.addColorStop(0, rgba(W.glow, 0.16));
+                gg.addColorStop(1, rgba(W.glow, 0));
+                c.fillStyle = gg;
+                c.fillRect(cx - tile * 1.2, cy - tile * 1.2, tile * 2.4, tile * 2.4);
+            }
+        c.restore();
+    }
+}
+
+
+/* ==========================================================================
+   LEVELS
+   A level is a blocked-cell grid plus a goal. Layouts come from a library of
+   seeded shape generators rather than 150 hand-drawn maps: a generator plus
+   its parameters and seed is a reproducible composition, and the schedule at
+   the bottom picks a deliberate one for every level so difficulty and terrain
+   ramp instead of wandering.
+   ========================================================================== */
+const N = 25;                       // grid is N x N cells
+
+function Grid() {
+    this.b = new Uint8Array(N * N);
+}
+Grid.prototype = {
+    at:  function (x, y) { return (x < 0 || y < 0 || x >= N || y >= N) ? 1 : this.b[y * N + x]; },
+    set: function (x, y) { if (x >= 0 && y >= 0 && x < N && y < N) this.b[y * N + x] = 1; },
+    clr: function (x, y) { if (x >= 0 && y >= 0 && x < N && y < N) this.b[y * N + x] = 0; },
+
+    rect: function (x, y, w, h) {
+        for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) this.set(x + i, y + j);
+        return this;
+    },
+    clear: function (x, y, w, h) {
+        for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) this.clr(x + i, y + j);
+        return this;
+    },
+    hline: function (y, x0, x1, t) {
+        t = t || 1;
+        for (let k = 0; k < t; k++) for (let x = x0; x <= x1; x++) this.set(x, y + k);
+        return this;
+    },
+    vline: function (x, y0, y1, t) {
+        t = t || 1;
+        for (let k = 0; k < t; k++) for (let y = y0; y <= y1; y++) this.set(x + k, y);
+        return this;
+    },
+    box: function (x, y, w, h, t) {           // hollow rectangle
+        t = t || 1;
+        this.hline(y, x, x + w - 1, t);
+        this.hline(y + h - t, x, x + w - 1, t);
+        this.vline(x, y, y + h - 1, t);
+        this.vline(x + w - t, y, y + h - 1, t);
+        return this;
+    },
+    border: function (t) { return this.box(0, 0, N, N, t || 1); },
+
+    /* Mirror what has been drawn so far, so a layout reads as designed rather
+       than sprinkled. */
+    mirrorX: function () {
+        for (let y = 0; y < N; y++) for (let x = 0; x < N; x++)
+            if (this.b[y * N + x]) this.set(N - 1 - x, y);
+        return this;
+    },
+    mirrorY: function () {
+        for (let y = 0; y < N; y++) for (let x = 0; x < N; x++)
+            if (this.b[y * N + x]) this.set(x, N - 1 - y);
+        return this;
+    },
+    rot4: function () {                        // 4-fold rotational symmetry
+        const src = this.b.slice();
+        for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+            if (!src[y * N + x]) continue;
+            this.set(N - 1 - y, x);
+            this.set(N - 1 - x, N - 1 - y);
+            this.set(y, N - 1 - x);
+        }
+        return this;
+    }
+};
+
+/* ---- the shape library. Each takes (g, rng, p). ---- */
+const PATTERNS = {
+
+open: function () { /* nothing but the arena */ },
+
+pillars: function (g, rng, p) {
+    const step = p.step || 4, sz = p.size || 1, off = p.off || 3;
+    for (let y = off; y < N - off + 1; y += step)
+        for (let x = off; x < N - off + 1; x += step)
+            g.rect(x, y, sz, sz);
+},
+
+bars: function (g, rng, p) {
+    // Short oriented bars scattered with breathing room, the classic arcade look.
+    const count = p.count || 14, len = p.len || 4;
+    const placed = [];
+    let tries = 0;
+    while (placed.length < count && tries++ < 500) {
+        const vert = rng() < 0.5;
+        const L = len + ((rng() * 2) | 0);
+        const x = 2 + ((rng() * (N - 4 - (vert ? 1 : L))) | 0);
+        const y = 2 + ((rng() * (N - 4 - (vert ? L : 1))) | 0);
+        let ok = true;
+        for (const q of placed)
+            if (Math.abs(q.x - x) < 3 && Math.abs(q.y - y) < 3) { ok = false; break; }
+        if (!ok) continue;
+        placed.push({ x: x, y: y });
+        if (vert) g.vline(x, y, y + L - 1); else g.hline(y, x, x + L - 1);
+    }
+},
+
+lanes: function (g, rng, p) {
+    // Vertical walls with a staggered gate in each.
+    const step = p.step || 4, gap = p.gap || 3;
+    for (let x = step, k = 0; x < N - 1; x += step, k++) {
+        const gy = 2 + ((k % 2 === 0) ? 3 : N - 8) + ((rng() * 3) | 0);
+        g.vline(x, 1, N - 2);
+        g.clear(x, Math.max(1, gy), 1, gap);
+    }
+},
+
+corridors: function (g, rng, p) {
+    const step = p.step || 4, gap = p.gap || 3;
+    for (let y = step, k = 0; y < N - 1; y += step, k++) {
+        const gx = 2 + ((k % 2 === 0) ? 3 : N - 8) + ((rng() * 3) | 0);
+        g.hline(y, 1, N - 2);
+        g.clear(Math.max(1, gx), y, gap, 1);
+    }
+},
+
+spiral: function (g, rng, p) {
+    const gap = p.gap || 3;
+    let x0 = 2, y0 = 2, x1 = N - 3, y1 = N - 3;
+    let guard = 0;
+    while (x1 - x0 > 2 && y1 - y0 > 2 && guard++ < 12) {
+        g.hline(y0, x0, x1);
+        g.vline(x1, y0, y1);
+        g.hline(y1, x0 + gap, x1);
+        g.vline(x0, y0 + gap, y1);
+        g.clear(x0, y0 + gap - 1, 1, 1);
+        x0 += gap; y0 += gap; x1 -= gap; y1 -= gap;
+    }
+},
+
+rings: function (g, rng, p) {
+    const step = p.step || 4;
+    for (let r = step; r < N / 2 - 1; r += step) {
+        g.box(r, r, N - r * 2, N - r * 2, 1);
+        // a doorway on each side, rotated per ring so the route is not straight
+        const m = (N / 2) | 0, o = ((r / step) | 0) % 4;
+        const doors = [[m, r], [N - 1 - r, m], [m, N - 1 - r], [r, m]];
+        for (let i = 0; i < 4; i++) {
+            if (i === o) continue;
+            g.clear(doors[i][0] - 1, doors[i][1] - 1, 3, 3);
+        }
+    }
+},
+
+cross: function (g, rng, p) {
+    const t = p.thick || 3, m = ((N - t) / 2) | 0, arm = p.arm || 8;
+    g.rect(m, 1, t, arm);
+    g.rect(m, N - 1 - arm, t, arm);
+    g.rect(1, m, arm, t);
+    g.rect(N - 1 - arm, m, arm, t);
+},
+
+diamond: function (g, rng, p) {
+    const r = p.r || 8, c = (N / 2) | 0;
+    for (let i = 0; i <= r; i++) {
+        g.set(c - r + i, c - i); g.set(c + r - i, c - i);
+        g.set(c - r + i, c + i); g.set(c + r - i, c + i);
+    }
+    g.clear(c - 1, c - r, 3, 1);
+    g.clear(c - 1, c + r, 3, 1);
+},
+
+rooms: function (g, rng, p) {
+    const cells = p.cells || 3;
+    const s = Math.floor((N - 1) / cells);
+    for (let i = 1; i < cells; i++) {
+        g.vline(i * s, 1, N - 2);
+        g.hline(i * s, 1, N - 2);
+    }
+    // punch a door in every wall segment
+    for (let i = 1; i < cells; i++)
+        for (let j = 0; j < cells; j++) {
+            const c = j * s + ((s / 2) | 0);
+            g.clear(i * s, c - 1, 1, 3);
+            g.clear(c - 1, i * s, 3, 1);
+        }
+},
+
+comb: function (g, rng, p) {
+    const step = p.step || 3, len = p.len || 9;
+    for (let x = step, k = 0; x < N - 1; x += step, k++)
+        if (k % 2 === 0) g.vline(x, 1, len);
+        else g.vline(x, N - 2 - len, N - 2);
+},
+
+checker: function (g, rng, p) {
+    const s = p.size || 3, step = s * 2;
+    for (let y = 2; y < N - s; y += step)
+        for (let x = 2; x < N - s; x += step)
+            g.rect(x + ((y / step | 0) % 2) * s, y, s, s);
+},
+
+zigzag: function (g, rng, p) {
+    const step = p.step || 5, len = p.len || 14;
+    for (let y = step, k = 0; y < N - 2; y += step, k++) {
+        const x0 = (k % 2 === 0) ? 1 : N - 1 - len;
+        g.hline(y, x0, x0 + len - 1);
+    }
+},
+
+hourglass: function (g, rng, p) {
+    const c = (N / 2) | 0, w = p.w || 2;
+    for (let i = 0; i < c - 1; i++) {
+        if (i % 4 === 1) continue;          // gate, or the X seals off all four quadrants
+        g.rect(1 + i, 1 + i, w, 1);
+        g.rect(N - 1 - i - w, 1 + i, w, 1);
+        g.rect(1 + i, N - 2 - i, w, 1);
+        g.rect(N - 1 - i - w, N - 2 - i, w, 1);
+    }
+},
+
+islands: function (g, rng, p) {
+    const n = p.count || 7, r = p.r || 2;
+    for (let i = 0; i < n; i++) {
+        const cx = 3 + ((rng() * (N - 6)) | 0), cy = 3 + ((rng() * (N - 6)) | 0);
+        for (let y = -r; y <= r; y++) for (let x = -r; x <= r; x++)
+            if (x * x + y * y <= r * r + (rng() < 0.4 ? 1 : 0)) g.set(cx + x, cy + y);
+    }
+},
+
+lattice: function (g, rng, p) {
+    const step = p.step || 4;
+    for (let x = step; x < N - 1; x += step) g.vline(x, 1, N - 2);
+    for (let y = step; y < N - 1; y += step) g.hline(y, 1, N - 2);
+    // Gate the middle of every wall segment. Opening only the junctions (which
+    // is what this did before) leaves most of the lattice sealed, and the whole
+    // interior then gets walled off as unreachable.
+    const half = Math.max(1, (step / 2) | 0);
+    for (let x = step; x < N - 1; x += step)
+        for (let y = 0; y < N; y += step) g.clear(x, y + half, 1, 1);
+    for (let y = step; y < N - 1; y += step)
+        for (let x = 0; x < N; x += step) g.clear(x + half, y, 1, 1);
+},
+
+chevrons: function (g, rng, p) {
+    const step = p.step || 5, w = p.w || 7;
+    for (let y = 3, k = 0; y < N - 2; y += step, k++) {
+        const cx = ((N / 2) | 0) + ((k % 2) ? 4 : -4);
+        for (let i = 0; i <= w; i++) {
+            // stop the arm at the floor rather than clamping onto it: clamping
+            // piled every overflow cell onto the bottom row, which walled off
+            // the whole bottom strip and left a solid mass once it was sealed
+            const yy = y + i;
+            if (yy > N - 2) break;
+            if (i % 3 === 2) continue;      // gate, or stacked Vs mesh into a closed lattice
+            g.set(cx - i, yy);
+            g.set(cx + i, yy);
+        }
+    }
+},
+
+pinwheel: function (g, rng, p) {
+    const arm = p.arm || 8, c = (N / 2) | 0;
+    g.hline(c, c, c + arm);
+    g.vline(c + arm, c - 3, c);
+    g.rot4();
+},
+
+waves: function (g, rng, p) {
+    const rows = p.rows || 3, amp = p.amp || 3;
+    for (let k = 1; k <= rows; k++) {
+        const base = Math.round((N * k) / (rows + 1));
+        for (let x = 1; x < N - 1; x++) {
+            const y = base + Math.round(Math.sin(x * 0.5 + k) * amp);
+            if (x % 7 !== 3) g.set(x, y);       // periodic gaps to pass through
+        }
+    }
+},
+
+frames: function (g, rng, p) {
+    g.box(2, 2, N - 4, N - 4, 1);
+    g.box(7, 7, N - 14, N - 14, 1);
+    const c = (N / 2) | 0;
+    g.clear(c - 1, 2, 3, 1); g.clear(c - 1, N - 3, 3, 1);
+    g.clear(2, c - 1, 1, 3); g.clear(N - 3, c - 1, 1, 3);
+    g.clear(c - 1, 7, 3, 1); g.clear(7, c - 1, 1, 3);
+},
+
+slalom: function (g, rng, p) {
+    const step = p.step || 3, len = p.len || 15;
+    for (let y = 2, k = 0; y < N - 2; y += step, k++)
+        if (k % 2 === 0) g.hline(y, 1, len);
+        else g.hline(y, N - 1 - len, N - 2);
+},
+
+vault: function (g, rng, p) {
+    const bays = p.bays || 3, s = Math.floor(N / bays);
+    for (let b = 0; b < bays; b++) {
+        const x = b * s + 2, w = s - 4;
+        if (w < 3) continue;
+        g.hline(4, x, x + w - 1);
+        g.hline(N - 5, x, x + w - 1);
+        g.vline(x, 4, 8);
+        g.vline(x + w - 1, N - 9, N - 5);
+    }
+},
+
+teeth: function (g, rng, p) {
+    const step = p.step || 3, len = p.len || 8;
+    for (let x = 2, k = 0; x < N - 2; x += step, k++) {
+        if (k % 2 === 0) g.vline(x, 1, len);
+        else g.vline(x, N - 1 - len, N - 2);
+    }
+    for (let y = 2, k = 0; y < N - 2; y += step * 2, k++)
+        g.hline(y, ((N / 2) | 0) - 2, ((N / 2) | 0) + 2);
+},
+
+scatter: function (g, rng, p) {
+    const n = p.count || 26;
+    for (let i = 0; i < n; i++) {
+        const w = 1 + ((rng() * 2) | 0), h = 1 + ((rng() * 2) | 0);
+        g.rect(2 + ((rng() * (N - 5)) | 0), 2 + ((rng() * (N - 5)) | 0), w, h);
+    }
+},
+
+diagonals: function (g, rng, p) {
+    const step = p.step || 6;
+    for (let o = -N; o < N * 2; o += step)
+        for (let i = 0; i < N; i++) {
+            const x = i, y = i + o;
+            if (i % 6 !== 2) g.set(x, y);
+        }
+},
+
+star: function (g, rng, p) {
+    const c = (N / 2) | 0, arms = p.arms || 6, r = p.r || 10;
+    for (let a = 0; a < arms; a++) {
+        const ang = (a / arms) * Math.PI * 2;
+        for (let i = 3; i <= r; i++) {
+            if (i % 4 === 2) continue;      // gate each spoke so the wedges connect
+            g.set(c + Math.round(Math.cos(ang) * i), c + Math.round(Math.sin(ang) * i));
+        }
+    }
+},
+
+serpentine: function (g, rng, p) {
+    // One long winding corridor: walls run almost the full width, alternating.
+    const step = p.step || 4;
+    for (let y = step, k = 0; y < N - 2; y += step, k++) {
+        if (k % 2 === 0) g.hline(y, 1, N - 5);
+        else g.hline(y, 4, N - 2);
+    }
+},
+
+quadrants: function (g, rng, p) {
+    const c = (N / 2) | 0;
+    g.vline(c, 1, N - 2);
+    g.hline(c, 1, N - 2);
+    g.clear(c - 1, c - 1, 3, 3);                 // central hub
+    const d = p.door || 5;
+    g.clear(c, d, 1, 3); g.clear(c, N - 1 - d - 2, 1, 3);
+    g.clear(d, c, 3, 1); g.clear(N - 1 - d - 2, c, 3, 1);
+},
+
+maze: function (g, rng, p) {
+    // Recursive division on a coarse lattice, so corridors stay 2 cells wide.
+    const min = p.min || 6;
+    (function divide(x, y, w, h, horiz) {
+        if (w < min || h < min) return;
+        if (horiz) {
+            const wy = y + 2 + 2 * ((rng() * ((h - 4) / 2)) | 0);
+            const dx = x + 2 * ((rng() * (w / 2)) | 0);
+            for (let i = x; i < x + w; i++) if (i < dx || i > dx + 1) g.set(i, wy);
+            divide(x, y, w, wy - y, !horiz);
+            divide(x, wy + 1, w, y + h - wy - 1, !horiz);
+        } else {
+            const wx = x + 2 + 2 * ((rng() * ((w - 4) / 2)) | 0);
+            const dy = y + 2 * ((rng() * (h / 2)) | 0);
+            for (let i = y; i < y + h; i++) if (i < dy || i > dy + 1) g.set(wx, i);
+            divide(x, y, wx - x, h, !horiz);
+            divide(wx + 1, y, x + w - wx - 1, h, !horiz);
+        }
+    })(1, 1, N - 2, N - 2, rng() < 0.5);
+},
+
+gridRooms: function (g, rng, p) {
+    const s = p.s || 6;
+    for (let x = s; x < N - 1; x += s) g.vline(x, 1, N - 2);
+    for (let y = s; y < N - 1; y += s) g.hline(y, 1, N - 2);
+    for (let x = s; x < N - 1; x += s)
+        for (let y = 2; y < N - 2; y += s) g.clear(x, y + ((rng() * 3) | 0), 1, 2);
+    for (let y = s; y < N - 1; y += s)
+        for (let x = 2; x < N - 2; x += s) g.clear(x + ((rng() * 3) | 0), y, 2, 1);
+},
+
+arrows: function (g, rng, p) {
+    const step = p.step || 6, w = p.w || 5;
+    for (let y = 3, k = 0; y < N - 3; y += step, k++) {
+        const cx = 4 + (k % 3) * 7;
+        for (let i = 0; i <= w; i++) { g.set(cx + i, y - i + w); g.set(cx + i, y + i - w); }
+    }
+},
+
+funnel: function (g, rng, p) {
+    const c = (N / 2) | 0;
+    for (let i = 0; i < c - 2; i++) {
+        g.set(2 + i, 2 + Math.floor(i * 0.7));
+        g.set(N - 3 - i, 2 + Math.floor(i * 0.7));
+    }
+    g.mirrorY();
+    g.clear(c - 2, c - 2, 5, 5);
+},
+
+blocksHeavy: function (g, rng, p) {
+    const step = p.step || 5, sz = p.size || 3;
+    for (let y = 2; y < N - sz; y += step)
+        for (let x = 2; x < N - sz; x += step)
+            if (!(x === 2 && y === 2)) g.rect(x, y, sz, sz);
+}
+};
+
+/* ==========================================================================
+   THE SCHEDULE
+   150 levels: [pattern, params, name]. Fifteen per biome. Patterns recur with
+   different parameters and seeds so a shape you met in the meadow reads
+   differently once it is basalt. `wrap` marks the handful of borderless
+   levels where the edges stay open.
+   ========================================================================== */
+const SCHEDULE = [
+/* --- I. Wildflower Meadow --- */
+['open',{}, 'First Light', 1], ['pillars',{step:6},'Fence Posts'], ['bars',{count:8,len:3},'Fallen Branches'],
+['corridors',{step:6,gap:4},'Hedgerows'], ['pillars',{step:4},'Orchard Rows'], ['lanes',{step:6,gap:4},'Cattle Runs'],
+['islands',{count:5,r:2},'Molehills'], ['bars',{count:12,len:4},'Windfall'], ['checker',{size:3},'Ploughed Squares'],
+['cross',{thick:3,arm:7},'The Crossroads'], ['comb',{step:4,len:8},'Hay Rakes'], ['rooms',{cells:2},'Two Paddocks'],
+['waves',{rows:2,amp:3},'Furrows'], ['scatter',{count:18},'Stone Clearance'], ['rings',{step:6},'The Old Ring'],
+/* --- II. Rainforest Floor --- */
+['lanes',{step:5,gap:4},'Buttress Roots'], ['islands',{count:7,r:2},'Termite Mounds'], ['bars',{count:14,len:4},'Deadfall'],
+['diagonals',{step:7},'Liana Fall'], ['rooms',{cells:3},'Canopy Chambers'], ['comb',{step:3,len:9},'Root Buttresses'],
+['spiral',{gap:4},'The Strangler'], ['scatter',{count:24},'Leaf Litter'], ['zigzag',{step:5,len:14},'Switchback Trail'],
+['pillars',{step:3},'Sapling Stand', 1], ['chevrons',{step:5,w:6},'Fern Ranks'], ['lattice',{step:5},'Vine Lattice'],
+['islands',{count:9,r:2},'Bromeliad Pools'], ['maze',{min:8},'Undergrowth'], ['frames',{},'The Clearing'],
+/* --- III. Dune Sea --- */
+['waves',{rows:3,amp:3},'Ripples'], ['bars',{count:16,len:5},'Bleached Bones'], ['hourglass',{w:2},'The Narrows'],
+['funnel',{},'Sand Funnel'], ['diagonals',{step:6},'Slipface', 1], ['lanes',{step:4,gap:3},'Dune Corridors'],
+['scatter',{count:28},'Scree'], ['diamond',{r:8},'The Caldera'], ['star',{arms:6,r:10},'Sunwheel'],
+['serpentine',{step:5},'Wadi'], ['pillars',{step:4,size:2},'Mesa Stumps'], ['rings',{step:5},'Salt Rings'],
+['teeth',{step:3,len:7},'Rock Teeth'], ['maze',{min:7},'The Lost Quarter'], ['blocksHeavy',{step:6,size:3},'The Boneyard'],
+/* --- IV. Autumn Woodland --- */
+['islands',{count:8,r:2},'Bramble Clumps'], ['corridors',{step:4,gap:3},'Beech Rows'], ['zigzag',{step:4,len:15},'Deer Path'],
+['arrows',{step:6,w:5},'Flightlines'], ['rooms',{cells:3},'Coppice Blocks'], ['bars',{count:18,len:4},'Windthrow'],
+['chevrons',{step:4,w:7},'Fallen Ranks'], ['lattice',{step:4},'Bramble Net'], ['spiral',{gap:3},'Fairy Ring'],
+['comb',{step:3,len:10},'Palisade'], ['scatter',{count:30},'Acorn Fall', 1], ['quadrants',{door:5},'Four Rides'],
+['vault',{bays:3},'The Old Kilns'], ['gridRooms',{s:6},'Charcoal Pits'], ['maze',{min:6},'The Thicket'],
+/* --- V. Frozen Taiga --- */
+['lanes',{step:4,gap:3},'Ice Leads'], ['waves',{rows:3,amp:4},'Sastrugi', 1], ['pillars',{step:3,size:2},'Ice Pillars'],
+['diagonals',{step:5},'Crevasse Field'], ['hourglass',{w:2},'The Pinch'], ['slalom',{step:3,len:15},'Slalom'],
+['islands',{count:10,r:2},'Hummocks'], ['teeth',{step:3,len:8},'Pressure Ridge'], ['checker',{size:2},'Pack Ice'],
+['frames',{},'Frozen Frames'], ['serpentine',{step:4},'Glacier Run'], ['star',{arms:8,r:10},'Frost Star'],
+['blocksHeavy',{step:5,size:3},'Icefall'], ['maze',{min:6},'Whiteout'], ['lattice',{step:3},'The Lattice'],
+/* --- VI. Cypress Bayou --- */
+['islands',{count:11,r:2},'Cypress Knees'], ['bars',{count:20,len:4},'Driftwood'], ['corridors',{step:3,gap:3},'Channels'],
+['waves',{rows:4,amp:3},'Backwater'], ['scatter',{count:34},'Sunken Logs'], ['zigzag',{step:4,len:16},'Oxbow'],
+['rooms',{cells:4},'Fish Traps'], ['lanes',{step:3,gap:3},'Narrow Bayous'], ['chevrons',{step:4,w:8},'Reed Beds'],
+['spiral',{gap:3},'The Whirl'], ['pinwheel',{arm:8},'Millrace'], ['teeth',{step:3,len:9},'Gator Teeth'],
+['gridRooms',{s:5},'Crawfish Pens'], ['maze',{min:6},'The Sunken Maze'], ['blocksHeavy',{step:5,size:3},'Stilt Village'],
+/* --- VII. Golden Savanna --- */
+['pillars',{step:4,size:2},'Termite Cathedrals'], ['diagonals',{step:5},'Game Trails'], ['bars',{count:22,len:5},'Deadwood'],
+['serpentine',{step:4},'The Dry River'], ['arrows',{step:5,w:5},'Migration', 1], ['lattice',{step:3},'Acacia Scrub'],
+['rings',{step:4},'The Kraal'], ['slalom',{step:3,len:16},'Herd Run'], ['hourglass',{w:3},'The Funnel'],
+['star',{arms:8,r:11},'Sunburst'], ['quadrants',{door:4},'Four Waterholes'], ['checker',{size:2},'Burnt Blocks'],
+['vault',{bays:4},'Rock Shelters'], ['maze',{min:6},'Thornscrub'], ['blocksHeavy',{step:5,size:3},'Boulder Field'],
+/* --- VIII. Ember Ashlands --- */
+['diagonals',{step:4},'Lava Tubes'], ['islands',{count:12,r:2},'Spatter Cones'], ['teeth',{step:3,len:9},'Basalt Teeth'],
+['waves',{rows:4,amp:4},'Flow Fronts'], ['scatter',{count:38},'Clinker'], ['comb',{step:3,len:11},'Fissures'],
+['lanes',{step:3,gap:2},'The Vents'], ['chevrons',{step:6,w:6},'Ash Ranks', 1], ['pinwheel',{arm:9},'Caldera Wheel'],
+['spiral',{gap:3},'Descent'], ['lattice',{step:3},'Cooling Cracks'], ['gridRooms',{s:5},'Furnace Cells'],
+['frames',{},'Obsidian Frames'], ['maze',{min:6},'The Burn'], ['blocksHeavy',{step:4,size:3},'Basalt Colonnade'],
+/* --- IX. Bioluminescent Cavern --- */
+['islands',{count:13,r:2},'Stalagmites'], ['lanes',{step:3,gap:2},'Fissure Runs'], ['diagonals',{step:4},'Fault Lines'],
+['star',{arms:10,r:11},'Crystal Star'], ['teeth',{step:2,len:10},'Cave Teeth'], ['rings',{step:4},'Flowstone Rings'],
+['serpentine',{step:3},'The Long Crawl'], ['slalom',{step:2,len:17},'The Squeeze'], ['checker',{size:2},'Crystal Cells'],
+['quadrants',{door:4},'Four Galleries'], ['pinwheel',{arm:9},'Glow Wheel', 1], ['gridRooms',{s:5},'Bat Roosts'],
+['lattice',{step:3},'Crystal Lattice'], ['maze',{min:6},'The Deep Maze'], ['blocksHeavy',{step:4,size:3},'Column Hall'],
+/* --- X. The Abyss --- */
+['scatter',{count:40},'Debris Field'], ['diagonals',{step:4},'Event Lines', 1], ['star',{arms:12,r:11},'Collapsar'],
+['rings',{step:3},'Accretion Rings'], ['spiral',{gap:3},'The Descent'], ['pinwheel',{arm:10},'Singularity'],
+['lattice',{step:2},'The Grid'], ['teeth',{step:2,len:11},'The Jaws'], ['hourglass',{w:3},'The Throat'],
+['serpentine',{step:3},'The Coil'], ['frames',{},'Nested Voids'], ['checker',{size:2},'Null Cells'],
+['gridRooms',{s:4},'The Cells'], ['maze',{min:6},'The Labyrinth'], ['blocksHeavy',{step:4,size:3},'The Last Wall']
+];
+
+const LEVEL_COUNT = SCHEDULE.length;
+
+function levelMeta(n) {
+    const s = SCHEDULE[n - 1];
+    return {
+        n: n,
+        name: s[2],
+        pattern: s[0],
+        params: s[1],
+        wrap: !!s[3],
+        biome: Math.min(BIOMES.length - 1, Math.floor((n - 1) / 15)),
+        goal: 4 + Math.floor((n - 1) / 6.5),          // 4 animals up to 26
+        speed: Math.max(55, Math.round(150 - (n - 1) * 0.62))
+    };
+}
+
+/* ---- assembly ---------------------------------------------------------- */
+
+/* Reachability from the snake's head. Anything the snake can never get to is
+   turned into wall, which means food can only ever spawn somewhere reachable —
+   no unwinnable level because an animal appeared inside a sealed pocket. */
+function sealPockets(g, sx, sy) {
+    const seen = new Uint8Array(N * N);
+    const queue = [sy * N + sx];
+    seen[sy * N + sx] = 1;
+    let open = 1;
+    for (let h = 0; h < queue.length; h++) {
+        const c = queue[h], x = c % N, y = (c / N) | 0;
+        const nb = [[x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]];
+        for (let i = 0; i < 4; i++) {
+            const a = nb[i][0], b = nb[i][1];
+            if (a < 0 || b < 0 || a >= N || b >= N) continue;
+            const k = b * N + a;
+            if (seen[k] || g.b[k]) continue;
+            seen[k] = 1; open++; queue.push(k);
+        }
+    }
+    for (let i = 0; i < N * N; i++) if (!g.b[i] && !seen[i]) g.b[i] = 1;
+    return open;
+}
+
+/* Pick where the snake starts. The old version took the first run that was
+   merely long enough, which on a spiral or a maze could drop the player three
+   cells from a wall — a third of a second to react. This takes the *longest*
+   straight run on the board (tie-broken toward the middle) and seats the snake
+   at one end of it, so the runway ahead is as long as the level allows. */
+function findStart(g, len) {
+    const mid = (N - 1) / 2;
+    let best = null;
+
+    function consider(line, dir) {
+        let run = [];
+        for (let i = 0; i <= line.length; i++) {
+            const c = line[i];
+            if (c && !g.at(c.x, c.y)) { run.push(c); continue; }
+            if (run.length >= len + 2) {
+                const head = run[len - 1];
+                const central = Math.abs(head.x - mid) + Math.abs(head.y - mid);
+                const score = run.length * 100 - central;
+                if (!best || score > best.score)
+                    best = { score: score, head: head, dir: dir, runway: run.length - len };
+            }
+            run = [];
+        }
+    }
+
+    for (let y = 0; y < N; y++) {
+        const row = [];
+        for (let x = 0; x < N; x++) row.push({ x: x, y: y });
+        consider(row, { x: 1, y: 0 });
+        consider(row.slice().reverse(), { x: -1, y: 0 });
+    }
+    for (let x = 0; x < N; x++) {
+        const col = [];
+        for (let y = 0; y < N; y++) col.push({ x: x, y: y });
+        consider(col, { x: 0, y: 1 });
+        consider(col.slice().reverse(), { x: 0, y: -1 });
+    }
+    return best;
+}
+
+const levelCache = {};
+
+function buildLevel(n) {
+    if (levelCache[n]) return levelCache[n];
+    const meta = levelMeta(n);
+    const g = new Grid();
+    const rng = makeRng(20000 + n * 7919);
+
+    if (!meta.wrap) g.border(1);
+    (PATTERNS[meta.pattern] || PATTERNS.open)(g, rng, meta.params);
+
+    const LEN = 5;
+    let s = findStart(g, LEN);
+    if (!s) {                                       // carve a lane rather than fail
+        const y = (N / 2) | 0;
+        g.clear(1, y - 1, N - 2, 3);
+        s = { head: { x: 9, y: y }, dir: { x: 1, y: 0 }, runway: N - 11 };
+    }
+
+    // Lay the snake out behind the head and clear the cells it occupies.
+    const body = [];
+    for (let i = 0; i < LEN; i++) {
+        const c = { x: s.head.x - s.dir.x * i, y: s.head.y - s.dir.y * i };
+        g.clr(c.x, c.y);
+        body.push(c);
+    }
+    // The run was already clear ahead of the head; widen it a touch if the
+    // level happened to be tight, so nobody starts with under four cells.
+    for (let i = 1; i <= 4; i++) g.clr(s.head.x + s.dir.x * i, s.head.y + s.dir.y * i);
+
+    const openCells = sealPockets(g, s.head.x, s.head.y);
+
+    const lvl = {
+        meta: meta, blocked: g.b, start: body, dir: s.dir,
+        runway: s.runway, open: openCells, biome: meta.biome
+    };
+    levelCache[n] = lvl;
+    return lvl;
+}
+
 
 /* ==========================================================================
    GAME
@@ -2695,22 +3464,17 @@ function paintBiome(c, W, biomeIndex) {
     'use strict';
 
     const CANVAS_SIZE = 700;
-    const GRID_SIZE   = 25;
-    const TILE        = CANVAS_SIZE / GRID_SIZE;   // 28
+    const GRID_SIZE   = N;                          // 25, from the level module
+    const TILE        = CANVAS_SIZE / GRID_SIZE;
     const BODY_W      = TILE * 0.84;
-    const MAX_SPAWN_ATTEMPTS = 200;
     const IDLE_FRAME_MS = 50;
     const SWIPE_THRESHOLD = 30;
-    const GAPE_DISTANCE = 4;        // tiles within which the jaw starts to open
+    const GAPE_DISTANCE = 4;
 
-    /* Lateral undulation. The wavelength is a little under five tiles, which
-       puts two to three waves along a mid-length snake — about what a real
-       colubrid throws. Amplitude is kept under half a tile so the drawn body
-       never strays far enough from the cells it occupies to mislead the
-       player about where it is safe to turn. */
+    /* Lateral undulation — see the notes on renderSnakeBody. */
     const WAVE_LENGTH = TILE * 4.6;
     const WAVE_AMP    = TILE * 0.40;
-    const WAVE_HEAD   = TILE * 1.35;   // the snout barely sways
+    const WAVE_HEAD   = TILE * 1.35;
     const WAVE_TAIL   = TILE * 0.90;
 
     /* ---------------- DOM ---------------- */
@@ -2724,65 +3488,55 @@ function paintBiome(c, W, biomeIndex) {
     }
     ctx.imageSmoothingQuality = 'high';
 
-    const scoreEl     = document.getElementById('score');
-    const levelEl     = document.getElementById('level');
-    const highScoreEl = document.getElementById('highScore');
-    const biomeEl     = document.getElementById('biomeName');
-    const speciesEl   = document.getElementById('speciesName');
-    const progressEl  = document.getElementById('progressFill');
-    const startScreen = document.getElementById('startScreen');
-    const gameOverScreen = document.getElementById('gameOverScreen');
-    const finalScoreEl = document.getElementById('finalScore');
-    const finalLevelEl = document.getElementById('finalLevel');
-    const finalBiomeEl = document.getElementById('finalBiome');
-    const startBtn    = document.getElementById('startBtn');
-    const pauseBtn    = document.getElementById('pauseBtn');
-    const restartBtn  = document.getElementById('restartBtn');
-    const announcer   = document.getElementById('game-announcer');
+    const $ = id => document.getElementById(id);
+    const scoreEl = $('score'), levelEl = $('level'), highScoreEl = $('highScore');
+    const goalEl = $('goalCount'), goalNeedEl = $('goalNeed'), goalFill = $('goalFill');
+    const biomeEl = $('biomeName'), speciesEl = $('speciesName');
+    const levelNameEl = $('levelName'), openEdgeEl = $('openEdge');
+    const startScreen = $('startScreen'), gameOverScreen = $('gameOverScreen');
+    const finalScoreEl = $('finalScore'), finalLevelEl = $('finalLevel'), finalNameEl = $('finalLevelName');
+    const startBtn = $('startBtn'), pauseBtn = $('pauseBtn'), restartBtn = $('restartBtn');
+    const retryBtn = $('retryBtn'), continueBtn = $('continueBtn'), newGameBtn = $('newGameBtn');
+    const levelPick = $('levelPick'), contWrap = $('continueWrap');
+    const announcer = $('game-announcer');
 
     const bgCanvas = document.createElement('canvas');
     bgCanvas.width = bgCanvas.height = CANVAS_SIZE;
     const bgCtx = bgCanvas.getContext('2d');
+    const obsCanvas = document.createElement('canvas');   // walls, drawn over the snake
+    obsCanvas.width = obsCanvas.height = CANVAS_SIZE;
+    const obsCtx = obsCanvas.getContext('2d');
 
     /* ---------------- state ---------------- */
+    let level = null;
+    let levelNo = 1;
+    let eaten = 0;
     let snake = [];
     let direction = { x: 1, y: 0 };
-    let pending = [];               // up to two buffered turns, so fast inputs aren't dropped
+    let pending = [];
     let food = {};
-    let score = 0;
-    let currentLevel = 1;
-    let gameState = 'start';        // start | playing | paused | gameover
-    let frame = 0;
-    let steps = 0;          // whole tiles the head has advanced
-    let idleDrift = 0;      // keeps a resting snake breathing on the menus
-    let particles = [];
-    let bursts = [];
-    let floaters = [];
-    let banner = null;
-    let deathFlash = 0;
-    let gape = 0;
-    let lastTime = 0;
-    let accumulated = 0;
-    let animationId = null;
-    let idleId = null;
+    let score = 0, levelStartScore = 0;
+    let gameState = 'start';        // start | playing | paused | dead | cleared
+    let frame = 0, steps = 0, idleDrift = 0;
+    let particles = [], bursts = [], floaters = [];
+    let banner = null, deathFlash = 0, gape = 0;
+    let lastTime = 0, accumulated = 0;
+    let animationId = null, idleId = null;
     let touchStartX = 0, touchStartY = 0;
 
-    function loadHighScore() {
-        try { return parseInt(localStorage.getItem('serpentHighScore'), 10) || 0; }
-        catch (e) { return 0; }
+    function store(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* private mode */ } }
+    function fetchNum(k) {
+        try { return parseInt(localStorage.getItem(k), 10) || 0; } catch (e) { return 0; }
     }
-    function saveHighScore(v) {
-        try { localStorage.setItem('serpentHighScore', v); } catch (e) { /* private mode */ }
-    }
-    let highScore = loadHighScore();
+    let highScore = fetchNum('serpentHighScore');
+    let furthest = Math.min(LEVEL_COUNT, Math.max(1, fetchNum('serpentFurthest') || 1));
 
-    const biome = () => BIOMES[currentLevel - 1];
-    const showOverlay = (el, on) => { if (el) el.classList.toggle('show', on); };
+    const biome = () => BIOMES[level.biome];
     const announce = m => { if (announcer) announcer.textContent = m; };
+    const showOverlay = (el, on) => { if (el) el.classList.toggle('show', on); };
+    const isWall = (x, y) => level.blocked[y * GRID_SIZE + x] === 1;
 
-    /* ==================== AMBIENT PARTICLES ====================
-       Each biome's air behaves differently: embers rise, sand blows sideways,
-       fireflies wander and blink, stars only twinkle. */
+    /* ==================== AMBIENT PARTICLES ==================== */
     const AIR = {
         petal:   { vy: [0.22, 0.55],  vx: [-0.34, 0.34], sz: [3, 7],     spin: 0.035, a: [0.35, 0.80], shape: 'petal' },
         spore:   { vy: [-0.34, -0.07],vx: [-0.14, 0.14], sz: [1.4, 3.4], spin: 0.010, a: [0.25, 0.65], shape: 'dot', glow: 1 },
@@ -2800,19 +3554,13 @@ function paintBiome(c, W, biomeIndex) {
     function initParticles() {
         const B = biome(), spec = AIR[B.particle.kind] || AIR.dust;
         particles = [];
-        for (let i = 0; i < B.particle.n; i++) {
+        for (let i = 0; i < B.particle.n; i++)
             particles.push({
-                x: Math.random() * CANVAS_SIZE,
-                y: Math.random() * CANVAS_SIZE,
-                vx: rand(spec.vx[0], spec.vx[1]),
-                vy: rand(spec.vy[0], spec.vy[1]),
-                sz: rand(spec.sz[0], spec.sz[1]),
-                a:  rand(spec.a[0], spec.a[1]),
-                rot: Math.random() * 6.283,
-                phase: Math.random() * 6.283,
-                sway: rand(0.4, 1.4)
+                x: Math.random() * CANVAS_SIZE, y: Math.random() * CANVAS_SIZE,
+                vx: rand(spec.vx[0], spec.vx[1]), vy: rand(spec.vy[0], spec.vy[1]),
+                sz: rand(spec.sz[0], spec.sz[1]), a: rand(spec.a[0], spec.a[1]),
+                rot: Math.random() * 6.283, phase: Math.random() * 6.283, sway: rand(0.4, 1.4)
             });
-        }
     }
 
     function updateParticles() {
@@ -2838,8 +3586,7 @@ function paintBiome(c, W, biomeIndex) {
         cv.width = cv.height = s;
         const c = cv.getContext('2d');
         const g = c.createRadialGradient(s / 2, s / 2, 0, s / 2, s / 2, radius);
-        g.addColorStop(0, color);
-        g.addColorStop(0.4, color);
+        g.addColorStop(0, color); g.addColorStop(0.4, color);
         g.addColorStop(1, 'rgba(255,255,255,0)');
         c.fillStyle = g;
         c.beginPath(); c.arc(s / 2, s / 2, radius, 0, Math.PI * 2); c.fill();
@@ -2848,41 +3595,32 @@ function paintBiome(c, W, biomeIndex) {
     }
 
     function drawParticles() {
-        const B = biome(), spec = AIR[B.particle.kind] || AIR.dust;
-        const col = B.particle.color;
+        const B = biome(), spec = AIR[B.particle.kind] || AIR.dust, col = B.particle.color;
         for (let i = 0; i < particles.length; i++) {
             const p = particles[i];
             let a = p.a;
             if (spec.blink)   a *= 0.30 + 0.70 * Math.max(0, Math.sin(frame * 0.06 + p.phase));
             if (spec.flicker) a *= 0.55 + 0.45 * Math.sin(frame * 0.4 + p.phase);
             if (spec.twinkle) a *= 0.35 + 0.65 * Math.abs(Math.sin(frame * 0.035 + p.phase));
-
             ctx.save();
             ctx.globalAlpha = Math.max(0, Math.min(1, a));
             ctx.translate(p.x, p.y);
-
             if (spec.glow) {
-                const r = p.sz * (1 + spec.glow);
-                const st = glowStamp(col, r);
+                const st = glowStamp(col, p.sz * (1 + spec.glow));
                 ctx.drawImage(st, -st.width / 2, -st.width / 2);
                 ctx.globalAlpha = Math.min(1, a * 1.3);
                 ctx.fillStyle = '#fff';
                 ctx.beginPath(); ctx.arc(0, 0, p.sz * 0.42, 0, Math.PI * 2); ctx.fill();
             } else if (spec.shape === 'petal') {
-                ctx.rotate(p.rot);
-                ctx.fillStyle = col;
-                ctx.beginPath();
-                ctx.ellipse(0, 0, p.sz, p.sz * 0.52, 0, 0, Math.PI * 2);
-                ctx.fill();
+                ctx.rotate(p.rot); ctx.fillStyle = col;
+                ctx.beginPath(); ctx.ellipse(0, 0, p.sz, p.sz * 0.52, 0, 0, Math.PI * 2); ctx.fill();
             } else if (spec.shape === 'leaf') {
-                ctx.rotate(p.rot);
-                ctx.fillStyle = col;
+                ctx.rotate(p.rot); ctx.fillStyle = col;
                 ctx.beginPath();
                 ctx.moveTo(0, -p.sz);
                 ctx.quadraticCurveTo(p.sz * 0.75, 0, 0, p.sz);
                 ctx.quadraticCurveTo(-p.sz * 0.75, 0, 0, -p.sz);
-                ctx.closePath();
-                ctx.fill();
+                ctx.closePath(); ctx.fill();
             } else {
                 ctx.fillStyle = col;
                 ctx.beginPath(); ctx.arc(0, 0, p.sz, 0, Math.PI * 2); ctx.fill();
@@ -2891,19 +3629,55 @@ function paintBiome(c, W, biomeIndex) {
         }
     }
 
-    /* ==================== SCENE ==================== */
-    function rebuildScene() {
-        paintBiome(bgCtx, CANVAS_SIZE, currentLevel - 1);
+    /* ==================== LEVEL LOADING ==================== */
+    function loadLevel(n) {
+        levelNo = Math.max(1, Math.min(LEVEL_COUNT, n));
+        level = buildLevel(levelNo);
+        eaten = 0;
+        snake = level.start.map(c => ({ x: c.x, y: c.y }));
+        direction = { x: level.dir.x, y: level.dir.y };
+        pending = [];
+        frame = 0; steps = 0; idleDrift = 0;
+        bursts = []; floaters = []; deathFlash = 0; gape = 0;
+        lastTime = 0; accumulated = 0;
+
+        paintBiome(bgCtx, CANVAS_SIZE, level.biome);
+        paintWallShadows(bgCtx, level.blocked, GRID_SIZE, TILE);
+        obsCtx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+        paintWalls(obsCtx, level.blocked, GRID_SIZE, TILE, biome().id, 7000 + levelNo * 31);
+
         initParticles();
-        if (biomeEl)   biomeEl.textContent = biome().name;
-        if (speciesEl) speciesEl.textContent = SPECIES[biome().species].name;
+        spawnFood();
+        updateHud();
+
+        if (levelNo > furthest) {
+            furthest = levelNo;
+            store('serpentFurthest', furthest);
+            buildLevelPicker();          // keep the menu's list in step with progress
+        }
+
+        banner = {
+            t: 0, level: levelNo, name: level.meta.name,
+            species: SPECIES[biome().species].name, region: biome().name,
+            wrap: level.meta.wrap
+        };
     }
 
-    /* ==================== SNAKE GEOMETRY ====================
-       Sub-tile interpolation. Each drawn point is anchored on the cell the
-       segment is moving *into* and pulled back toward where it came from, so a
-       segment crossing the map edge stays put at its new cell and the body
-       trails off the far side rather than the head vanishing for a tick. */
+    function updateHud() {
+        const m = level.meta;
+        scoreEl.textContent = score;
+        levelEl.textContent = levelNo;
+        highScoreEl.textContent = highScore;
+        goalEl.textContent = eaten;
+        goalNeedEl.textContent = m.goal;
+        goalFill.style.width = Math.min(100, (eaten / m.goal) * 100).toFixed(1) + '%';
+        levelNameEl.textContent = m.name;
+        biomeEl.textContent = biome().name;
+        speciesEl.textContent = SPECIES[biome().species].name;
+        openEdgeEl.hidden = !m.wrap;
+    }
+
+    /* ==================== SNAKE GEOMETRY ==================== */
     function cellPoint(from, to, t) {
         let dx = to.x - from.x, dy = to.y - from.y;
         if (dx >  GRID_SIZE / 2) dx -= GRID_SIZE;
@@ -2921,12 +3695,11 @@ function paintBiome(c, W, biomeIndex) {
         if (n === 0) return [];
         const pts = new Array(n);
         for (let i = 0; i < n; i++) {
-            if (i < n - 1)      pts[i] = cellPoint(snake[i + 1], snake[i], t);
-            else if (n >= 2)    pts[i] = cellPoint(snake[n - 1], snake[n - 2], t);
-            else                pts[i] = cellPoint(snake[0], snake[0], t);
+            if (i < n - 1)   pts[i] = cellPoint(snake[i + 1], snake[i], t);
+            else if (n >= 2) pts[i] = cellPoint(snake[n - 1], snake[n - 2], t);
+            else             pts[i] = cellPoint(snake[0], snake[0], t);
         }
-        const CUT = TILE * 2.2;
-        const groups = [];
+        const CUT = TILE * 2.2, groups = [];
         let cur = [pts[0]];
         for (let i = 1; i < n; i++) {
             if (Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y) > CUT) {
@@ -2939,35 +3712,21 @@ function paintBiome(c, W, biomeIndex) {
 
     function drawSnake() {
         const t = gameState === 'playing'
-            ? Math.max(0, Math.min(1, accumulated / biome().speed))
-            : 1;
+            ? Math.max(0, Math.min(1, accumulated / level.meta.speed)) : 1;
         const groups = snakeGroups(t);
         if (!groups.length) return;
-
-        // Distance the head has covered. While playing this is the real travel
-        // so the wave stays pinned to the ground; on the menus it drifts slowly
-        // so a waiting snake still breathes. Paused, it holds still.
-        const travelled = gameState === 'playing'
-            ? (steps + t) * TILE
-            : idleDrift;
-
+        const travelled = gameState === 'playing' ? (steps + t) * TILE : idleDrift;
         renderSnake(ctx, groups, biome().species, BODY_W, frame, {
             headAngle: Math.atan2(direction.y, direction.x),
             gape: gape,
-            undulation: {
-                amp: WAVE_AMP,
-                lambda: WAVE_LENGTH,
-                travelled: travelled,
-                rampHead: WAVE_HEAD,
-                rampTail: WAVE_TAIL
-            }
+            undulation: { amp: WAVE_AMP, lambda: WAVE_LENGTH, travelled: travelled,
+                          rampHead: WAVE_HEAD, rampTail: WAVE_TAIL }
         });
     }
 
     /* ==================== FOOD ==================== */
     function spawnFood() {
         const roster = biome().prey;
-        // weight the biome's roster by each animal's own rarity
         let total = 0;
         for (let i = 0; i < roster.length; i++) total += PREY[roster[i]].weight;
         let r = Math.random() * total, type = roster[0];
@@ -2976,40 +3735,26 @@ function paintBiome(c, W, biomeIndex) {
             if (r <= 0) { type = roster[i]; break; }
         }
 
-        let x, y, ok = false;
-        for (let a = 0; a < MAX_SPAWN_ATTEMPTS; a++) {
-            x = (Math.random() * GRID_SIZE) | 0;
-            y = (Math.random() * GRID_SIZE) | 0;
-            let hit = false;
-            for (let i = 0; i < snake.length; i++)
-                if (snake[i].x === x && snake[i].y === y) { hit = true; break; }
-            if (!hit) { ok = true; break; }
-        }
-        if (!ok) {
-            // Board is nearly full: fall back to an exhaustive scan rather than
-            // dropping food on top of the snake.
-            const open = [];
-            for (let gy = 0; gy < GRID_SIZE; gy++) {
-                for (let gx = 0; gx < GRID_SIZE; gx++) {
-                    let hit = false;
-                    for (let i = 0; i < snake.length; i++)
-                        if (snake[i].x === gx && snake[i].y === gy) { hit = true; break; }
-                    if (!hit) open.push({ x: gx, y: gy });
-                }
+        // Every free cell is reachable (sealed pockets were walled off when the
+        // level was built), so any of them is a fair place to put an animal.
+        const open = [];
+        for (let y = 0; y < GRID_SIZE; y++)
+            for (let x = 0; x < GRID_SIZE; x++) {
+                if (isWall(x, y)) continue;
+                let hit = false;
+                for (let i = 0; i < snake.length; i++)
+                    if (snake[i].x === x && snake[i].y === y) { hit = true; break; }
+                if (!hit) open.push({ x: x, y: y });
             }
-            if (!open.length) { food = {}; return; }
-            const pick = open[(Math.random() * open.length) | 0];
-            x = pick.x; y = pick.y;
-        }
-
-        food = { x: x, y: y, type: type, points: PREY[type].points, born: frame };
+        if (!open.length) { food = {}; return; }
+        const pick = open[(Math.random() * open.length) | 0];
+        food = { x: pick.x, y: pick.y, type: type, points: PREY[type].points };
     }
 
     function drawFood() {
         if (food.x === undefined) return;
-        const fx = food.x * TILE + TILE / 2;
-        const fy = food.y * TILE + TILE / 2;
-        renderPrey(ctx, fx, fy, food.type, TILE * 0.52 * (PREY[food.type].r / 0.7), frame, 0);
+        renderPrey(ctx, food.x * TILE + TILE / 2, food.y * TILE + TILE / 2,
+                   food.type, TILE * 0.52 * (PREY[food.type].r / 0.7), frame, 0);
     }
 
     /* ==================== EFFECTS ==================== */
@@ -3028,8 +3773,7 @@ function paintBiome(c, W, biomeIndex) {
             const b = bursts[i];
             ctx.save();
             ctx.globalAlpha = b.alpha * 0.7;
-            ctx.strokeStyle = b.color;
-            ctx.lineWidth = 2.4;
+            ctx.strokeStyle = b.color; ctx.lineWidth = 2.4;
             ctx.beginPath(); ctx.arc(b.x, b.y, b.ring, 0, Math.PI * 2); ctx.stroke();
             ctx.fillStyle = b.color;
             for (let k = 0; k < b.bits.length; k++) {
@@ -3041,8 +3785,7 @@ function paintBiome(c, W, biomeIndex) {
                 p.life -= 0.035;
             }
             ctx.restore();
-            b.ring += 3.2;
-            b.alpha -= 0.035;
+            b.ring += 3.2; b.alpha -= 0.035;
             if (b.alpha <= 0) bursts.splice(i, 1);
         }
     }
@@ -3054,14 +3797,12 @@ function paintBiome(c, W, biomeIndex) {
             ctx.globalAlpha = Math.max(0, f.alpha);
             ctx.font = '700 20px "Iowan Old Style", Georgia, serif';
             ctx.textAlign = 'center';
-            ctx.lineWidth = 3.5;
-            ctx.strokeStyle = 'rgba(0,0,0,0.65)';
+            ctx.lineWidth = 3.5; ctx.strokeStyle = 'rgba(0,0,0,0.65)';
             ctx.strokeText(f.text, f.x, f.y);
             ctx.fillStyle = f.color;
             ctx.fillText(f.text, f.x, f.y);
             ctx.restore();
-            f.y -= 0.85;
-            f.alpha -= 0.018;
+            f.y -= 0.85; f.alpha -= 0.018;
             if (f.alpha <= 0) floaters.splice(i, 1);
         }
     }
@@ -3069,7 +3810,7 @@ function paintBiome(c, W, biomeIndex) {
     function drawBanner() {
         if (!banner) return;
         banner.t++;
-        const IN = 22, HOLD = 78, OUT = 30;
+        const IN = 18, HOLD = banner.cleared ? 46 : 62, OUT = 26;
         let a = 1;
         if (banner.t < IN) a = banner.t / IN;
         else if (banner.t > IN + HOLD) a = 1 - (banner.t - IN - HOLD) / OUT;
@@ -3080,31 +3821,33 @@ function paintBiome(c, W, biomeIndex) {
         ctx.save();
         ctx.globalAlpha = a;
         ctx.textAlign = 'center';
-
-        ctx.fillStyle = 'rgba(8,10,8,0.62)';
-        ctx.fillRect(0, cy - 66, CANVAS_SIZE, 136);
+        ctx.fillStyle = 'rgba(8,10,8,0.68)';
+        ctx.fillRect(0, cy - 72, CANVAS_SIZE, 152);
         ctx.strokeStyle = 'rgba(214,171,73,0.55)';
         ctx.lineWidth = 1;
         ctx.beginPath();
-        ctx.moveTo(0, cy - 66); ctx.lineTo(CANVAS_SIZE, cy - 66);
-        ctx.moveTo(0, cy + 70); ctx.lineTo(CANVAS_SIZE, cy + 70);
+        ctx.moveTo(0, cy - 72); ctx.lineTo(CANVAS_SIZE, cy - 72);
+        ctx.moveTo(0, cy + 80); ctx.lineTo(CANVAS_SIZE, cy + 80);
         ctx.stroke();
 
         ctx.fillStyle = '#d6ab49';
         ctx.font = '500 12px ui-monospace, "SF Mono", Menlo, monospace';
-        ctx.fillText('LEVEL ' + banner.level, CANVAS_SIZE / 2, cy - 34);
+        ctx.fillText(banner.cleared ? 'LEVEL CLEARED'
+                                    : 'LEVEL ' + banner.level + ' OF ' + LEVEL_COUNT,
+                     CANVAS_SIZE / 2, cy - 40);
 
         ctx.fillStyle = '#f2ece0';
-        ctx.font = '600 40px "Iowan Old Style", Georgia, serif';
-        ctx.fillText(banner.name, CANVAS_SIZE / 2, cy + 8);
+        ctx.font = '600 38px "Iowan Old Style", Georgia, serif';
+        ctx.fillText(banner.name, CANVAS_SIZE / 2, cy + 2);
 
         ctx.fillStyle = 'rgba(242,236,224,0.62)';
-        ctx.font = 'italic 17px "Iowan Old Style", Georgia, serif';
-        ctx.fillText(banner.species, CANVAS_SIZE / 2, cy + 38);
+        ctx.font = 'italic 16px "Iowan Old Style", Georgia, serif';
+        ctx.fillText(banner.region + ' · ' + banner.species, CANVAS_SIZE / 2, cy + 32);
 
-        ctx.fillStyle = 'rgba(242,236,224,0.38)';
         ctx.font = '500 11px ui-monospace, Menlo, monospace';
-        ctx.fillText(banner.region.toUpperCase(), CANVAS_SIZE / 2, cy + 60);
+        ctx.fillStyle = banner.wrap ? '#7fd8a0' : 'rgba(242,236,224,0.38)';
+        ctx.fillText(banner.wrap ? 'EDGES OPEN — THE MAP WRAPS'
+                                 : 'WALLS ARE LETHAL', CANVAS_SIZE / 2, cy + 58);
         ctx.restore();
     }
 
@@ -3118,40 +3861,6 @@ function paintBiome(c, W, biomeIndex) {
         deathFlash = Math.max(0, deathFlash - 0.045);
     }
 
-    /* ==================== HUD ==================== */
-    function updateScore() {
-        scoreEl.textContent = score;
-        scoreEl.classList.remove('pop'); void scoreEl.offsetWidth; scoreEl.classList.add('pop');
-        if (score > highScore) {
-            highScore = score;
-            saveHighScore(highScore);
-            highScoreEl.textContent = highScore;
-        }
-        updateProgress();
-    }
-
-    function updateProgress() {
-        if (!progressEl) return;
-        const need = biome().need;
-        if (need === Infinity) { progressEl.style.width = '100%'; return; }
-        const prev = currentLevel > 1 ? BIOMES[currentLevel - 2].need : 0;
-        const pct = Math.max(0, Math.min(1, (score - prev) / (need - prev)));
-        progressEl.style.width = (pct * 100).toFixed(1) + '%';
-    }
-
-    function checkLevelUp() {
-        if (currentLevel < BIOMES.length && score >= biome().need) {
-            currentLevel++;
-            levelEl.textContent = currentLevel;
-            rebuildScene();
-            const B = biome();
-            banner = { t: 0, level: currentLevel, name: B.name,
-                       species: SPECIES[B.species].name, region: B.region };
-            announce('Level ' + currentLevel + '. ' + B.name + '. A ' + SPECIES[B.species].name + '.');
-            updateProgress();
-        }
-    }
-
     /* ==================== LOOP ==================== */
     function updateGape() {
         if (food.x === undefined || gameState !== 'playing' || !snake.length) {
@@ -3159,8 +3868,7 @@ function paintBiome(c, W, biomeIndex) {
             return;
         }
         let dx = Math.abs(snake[0].x - food.x), dy = Math.abs(snake[0].y - food.y);
-        dx = Math.min(dx, GRID_SIZE - dx);
-        dy = Math.min(dy, GRID_SIZE - dy);
+        if (level.meta.wrap) { dx = Math.min(dx, GRID_SIZE - dx); dy = Math.min(dy, GRID_SIZE - dy); }
         const dist = dx + dy;
         const target = dist <= GAPE_DISTANCE ? 1 - dist / (GAPE_DISTANCE + 1) : 0;
         gape += (target - gape) * 0.22;
@@ -3173,33 +3881,87 @@ function paintBiome(c, W, biomeIndex) {
 
         let hx = snake[0].x + direction.x;
         let hy = snake[0].y + direction.y;
-        if (hx < 0) hx = GRID_SIZE - 1; else if (hx >= GRID_SIZE) hx = 0;
-        if (hy < 0) hy = GRID_SIZE - 1; else if (hy >= GRID_SIZE) hy = 0;
 
-        // The tail vacates this tick, so moving into it is legal.
+        if (level.meta.wrap) {
+            if (hx < 0) hx = GRID_SIZE - 1; else if (hx >= GRID_SIZE) hx = 0;
+            if (hy < 0) hy = GRID_SIZE - 1; else if (hy >= GRID_SIZE) hy = 0;
+        } else if (hx < 0 || hy < 0 || hx >= GRID_SIZE || hy >= GRID_SIZE) {
+            die('the edge'); return;
+        }
+
+        if (isWall(hx, hy)) { die('a wall'); return; }
+
         const eating = (hx === food.x && hy === food.y);
         const limit = eating ? snake.length : snake.length - 1;
-        for (let i = 0; i < limit; i++) {
-            if (snake[i].x === hx && snake[i].y === hy) { gameOver(); return; }
-        }
+        for (let i = 0; i < limit; i++)
+            if (snake[i].x === hx && snake[i].y === hy) { die('itself'); return; }
 
         snake.unshift({ x: hx, y: hy });
         if (food.x === undefined) spawnFood();
 
         if (eating) {
             score += food.points;
+            eaten++;
             const fx = food.x * TILE + TILE / 2, fy = food.y * TILE + TILE / 2;
             spawnBurst(fx, fy, biome().particle.color);
-            floaters.push({ x: fx, y: fy - 12, text: '+' + food.points,
-                            color: '#f6e7bd', alpha: 1 });
-            updateScore();
+            floaters.push({ x: fx, y: fy - 12, text: '+' + food.points, color: '#f6e7bd', alpha: 1 });
+            if (score > highScore) { highScore = score; store('serpentHighScore', highScore); }
+            updateHud();
+            scoreEl.classList.remove('pop'); void scoreEl.offsetWidth; scoreEl.classList.add('pop');
+
+            if (eaten >= level.meta.goal) { clearLevel(); return; }
             spawnFood();
-            checkLevelUp();
         } else {
             snake.pop();
         }
-        steps++;
-        frame++;
+        steps++; frame++;
+    }
+
+    function clearLevel() {
+        food = {};
+        if (levelNo >= LEVEL_COUNT) {
+            gameState = 'cleared';
+            if (animationId) { cancelAnimationFrame(animationId); animationId = null; }
+            finalScoreEl.textContent = score;
+            finalLevelEl.textContent = levelNo;
+            finalNameEl.textContent = 'You finished all ' + LEVEL_COUNT + ' levels.';
+            gameOverScreen.querySelector('h2').textContent = 'The Abyss is behind you';
+            showOverlay(gameOverScreen, true);
+            startIdle();
+            announce('All levels complete. Final score ' + score);
+            return;
+        }
+        gameState = 'cleared';
+        if (animationId) { cancelAnimationFrame(animationId); animationId = null; }
+        banner = { t: 0, cleared: true, level: levelNo, name: level.meta.name,
+                   species: SPECIES[biome().species].name, region: biome().name,
+                   wrap: level.meta.wrap };
+        announce('Level ' + levelNo + ' cleared.');
+        startIdle();
+        setTimeout(function () {
+            if (gameState !== 'cleared') return;
+            levelStartScore = score;
+            loadLevel(levelNo + 1);
+            gameState = 'playing';
+            stopIdle();
+            lastTime = 0; accumulated = 0;
+            animationId = requestAnimationFrame(loop);
+        }, 1500);
+    }
+
+    function die(cause) {
+        gameState = 'dead';
+        if (animationId) { cancelAnimationFrame(animationId); animationId = null; }
+        deathFlash = 0.6;
+        finalScoreEl.textContent = score;
+        finalLevelEl.textContent = levelNo;
+        finalNameEl.textContent = level.meta.name + ' — you hit ' + cause + '.';
+        gameOverScreen.querySelector('h2').textContent = 'Caught out';
+        requestAnimationFrame(function () {
+            draw();
+            setTimeout(function () { showOverlay(gameOverScreen, true); startIdle(); }, 420);
+        });
+        announce('You hit ' + cause + ' on level ' + levelNo + '. Score ' + score);
     }
 
     function draw() {
@@ -3207,6 +3969,7 @@ function paintBiome(c, W, biomeIndex) {
         drawParticles();
         drawFood();
         drawSnake();
+        ctx.drawImage(obsCanvas, 0, 0);   // walls occlude anything pressed against them
         drawBursts();
         drawFloaters();
         drawBanner();
@@ -3233,10 +3996,9 @@ function paintBiome(c, W, biomeIndex) {
             if (!lastTime) lastTime = ts;
             let dt = ts - lastTime;
             lastTime = ts;
-            if (dt > 250) dt = 250;            // tab was backgrounded; don't fast-forward
+            if (dt > 250) dt = 250;
             accumulated += dt;
-
-            const speed = biome().speed;
+            const speed = level.meta.speed;
             let guard = 0;
             while (accumulated >= speed && guard++ < 8) {
                 step();
@@ -3248,7 +4010,7 @@ function paintBiome(c, W, biomeIndex) {
             draw();
             animationId = requestAnimationFrame(loop);
         } catch (err) {
-            gameState = 'gameover';
+            gameState = 'dead';
             if (animationId) { cancelAnimationFrame(animationId); animationId = null; }
             showError();
             announce('An error occurred. Please refresh the page.');
@@ -3283,46 +4045,37 @@ function paintBiome(c, W, biomeIndex) {
             idleId = requestAnimationFrame(idle);
         })(0);
     }
-    function stopIdle() {
-        if (idleId) { cancelAnimationFrame(idleId); idleId = null; }
-    }
+    function stopIdle() { if (idleId) { cancelAnimationFrame(idleId); idleId = null; } }
 
-    /* ==================== CONTROLS ==================== */
-    function startGame() {
-        snake = [{ x: 12, y: 12 }, { x: 11, y: 12 }, { x: 10, y: 12 },
-                 { x: 9, y: 12 }, { x: 8, y: 12 }];
-        direction = { x: 1, y: 0 };
-        pending = [];
-        score = 0;
-        currentLevel = 1;
-        gameState = 'playing';
-        frame = 0; steps = 0; idleDrift = 0; lastTime = 0; accumulated = 0;
-        bursts = []; floaters = []; banner = null;
-        deathFlash = 0; gape = 0;
-
+    /* ==================== FLOW ==================== */
+    function beginAt(n) {
+        score = 0; levelStartScore = 0;
         showOverlay(startScreen, false);
         showOverlay(gameOverScreen, false);
-        levelEl.textContent = 1;
-        rebuildScene();
-        updateScore();
-        spawnFood();
-        const B = biome();
-        banner = { t: 0, level: 1, name: B.name,
-                   species: SPECIES[B.species].name, region: B.region };
-
+        loadLevel(n);
+        gameState = 'playing';
         stopIdle();
         if (animationId) cancelAnimationFrame(animationId);
         animationId = requestAnimationFrame(loop);
-        announce('Game started in ' + B.name + '. You are a ' + SPECIES[B.species].name + '.');
+        announce('Level ' + levelNo + ', ' + level.meta.name + ', in the ' + biome().name);
+    }
+
+    function retryLevel() {
+        score = levelStartScore;
+        showOverlay(gameOverScreen, false);
+        loadLevel(levelNo);
+        gameState = 'playing';
+        stopIdle();
+        if (animationId) cancelAnimationFrame(animationId);
+        animationId = requestAnimationFrame(loop);
+        announce('Retrying level ' + levelNo);
     }
 
     function togglePause() {
         if (gameState === 'playing') {
             gameState = 'paused';
             if (animationId) { cancelAnimationFrame(animationId); animationId = null; }
-            draw();
-            startIdle();
-            announce('Paused');
+            draw(); startIdle(); announce('Paused');
         } else if (gameState === 'paused') {
             gameState = 'playing';
             stopIdle();
@@ -3332,53 +4085,38 @@ function paintBiome(c, W, biomeIndex) {
         }
     }
 
-    function gameOver() {
-        gameState = 'gameover';
+    function toMenu() {
         if (animationId) { cancelAnimationFrame(animationId); animationId = null; }
-        deathFlash = 0.6;
-        finalScoreEl.textContent = score;
-        finalLevelEl.textContent = currentLevel;
-        if (finalBiomeEl) finalBiomeEl.textContent = biome().name;
-        requestAnimationFrame(function () {
-            draw();
-            setTimeout(function () {
-                showOverlay(gameOverScreen, true);
-                startIdle();
-            }, 420);
-        });
-        announce('Game over. Final score ' + score + ', reached ' + biome().name + '.');
-    }
-
-    function resetGame() {
-        if (animationId) { cancelAnimationFrame(animationId); animationId = null; }
-        stopIdle();
         gameState = 'start';
-        currentLevel = 1;
-        score = 0;
-        snake = [{ x: 12, y: 12 }, { x: 11, y: 12 }, { x: 10, y: 12 },
-                 { x: 9, y: 12 }, { x: 8, y: 12 }];
-        direction = { x: 1, y: 0 };
-        pending = [];
-        food = {};
-        banner = null; bursts = []; floaters = []; deathFlash = 0;
-        steps = 0; idleDrift = 0;
-        levelEl.textContent = 1;
-        scoreEl.textContent = 0;
-        showOverlay(startScreen, true);
         showOverlay(gameOverScreen, false);
-        rebuildScene();
-        updateProgress();
+        showOverlay(startScreen, true);
+        buildLevelPicker();
+        loadLevel(levelNo);
+        banner = null;
         startIdle();
-        announce('Reset');
+        announce('Menu');
     }
 
+    function buildLevelPicker() {
+        if (!levelPick) return;
+        const cur = levelPick.value;
+        levelPick.innerHTML = '';
+        for (let i = 1; i <= furthest; i++) {
+            const o = document.createElement('option');
+            o.value = i;
+            o.textContent = i + '. ' + SCHEDULE[i - 1][2];
+            levelPick.appendChild(o);
+        }
+        levelPick.value = cur && cur <= furthest ? cur : furthest;
+        contWrap.hidden = furthest <= 1;
+    }
+
+    /* ==================== INPUT ==================== */
     function turn(dx, dy) {
         if (pending.length >= 2) return;
-        // Validate against the last direction already committed or queued, so a
-        // fast right-then-up keeps both turns and neither can reverse the snake.
         const last = pending.length ? pending[pending.length - 1] : direction;
-        if (last.x === -dx && last.y === -dy) return;   // no reversing
-        if (last.x === dx && last.y === dy) return;     // no change
+        if (last.x === -dx && last.y === -dy) return;
+        if (last.x === dx && last.y === dy) return;
         pending.push({ x: dx, y: dy });
     }
 
@@ -3391,7 +4129,9 @@ function paintBiome(c, W, biomeIndex) {
     document.addEventListener('keydown', function (e) {
         if (e.code === 'Space') {
             e.preventDefault();
-            if (gameState === 'start' || gameState === 'gameover') startGame();
+            if (gameState === 'start') beginAt(parseInt(levelPick && levelPick.value, 10) || 1);
+            else if (gameState === 'dead') retryLevel();
+            else if (gameState === 'cleared') { /* the transition drives itself */ }
             else togglePause();
             return;
         }
@@ -3401,8 +4141,7 @@ function paintBiome(c, W, biomeIndex) {
     });
 
     canvas.addEventListener('touchstart', function (e) {
-        touchStartX = e.touches[0].clientX;
-        touchStartY = e.touches[0].clientY;
+        touchStartX = e.touches[0].clientX; touchStartY = e.touches[0].clientY;
     }, { passive: true });
 
     canvas.addEventListener('touchend', function (e) {
@@ -3411,7 +4150,8 @@ function paintBiome(c, W, biomeIndex) {
         const dy = e.changedTouches[0].clientY - touchStartY;
         touchStartX = touchStartY = 0;
         if (Math.abs(dx) < SWIPE_THRESHOLD && Math.abs(dy) < SWIPE_THRESHOLD) {
-            if (gameState === 'start' || gameState === 'gameover') startGame();
+            if (gameState === 'start') beginAt(parseInt(levelPick && levelPick.value, 10) || 1);
+            else if (gameState === 'dead') retryLevel();
             return;
         }
         if (gameState !== 'playing') return;
@@ -3419,9 +4159,17 @@ function paintBiome(c, W, biomeIndex) {
         else turn(0, dy > 0 ? 1 : -1);
     }, { passive: true });
 
-    startBtn.addEventListener('click', startGame);
+    startBtn.addEventListener('click', function () {
+        if (gameState === 'start') beginAt(parseInt(levelPick && levelPick.value, 10) || 1);
+        else if (gameState === 'dead') retryLevel();
+    });
     pauseBtn.addEventListener('click', togglePause);
-    restartBtn.addEventListener('click', resetGame);
+    restartBtn.addEventListener('click', toMenu);
+    if (retryBtn) retryBtn.addEventListener('click', retryLevel);
+    if (continueBtn) continueBtn.addEventListener('click', function () {
+        beginAt(parseInt(levelPick.value, 10) || furthest);
+    });
+    if (newGameBtn) newGameBtn.addEventListener('click', function () { beginAt(1); });
 
     canvas.addEventListener('contextlost', function (e) {
         e.preventDefault();
@@ -3432,7 +4180,7 @@ function paintBiome(c, W, biomeIndex) {
 
     canvas.addEventListener('contextrestored', function () {
         ctx.imageSmoothingQuality = 'high';
-        rebuildScene();
+        loadLevel(levelNo);
         draw();
         if (gameState !== 'playing') startIdle();
         announce('Display restored.');
@@ -3443,13 +4191,10 @@ function paintBiome(c, W, biomeIndex) {
     });
 
     /* ==================== BOOT ==================== */
-    highScoreEl.textContent = highScore;
+    buildLevelPicker();
+    loadLevel(furthest);
+    banner = null;
     showOverlay(startScreen, true);
-    snake = [{ x: 12, y: 12 }, { x: 11, y: 12 }, { x: 10, y: 12 },
-                 { x: 9, y: 12 }, { x: 8, y: 12 }];
-    rebuildScene();
-    spawnFood();
-    updateProgress();
     draw();
     startIdle();
 })();

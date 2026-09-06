@@ -1,6 +1,6 @@
-# Serpent — a field guide in ten biomes
+# Serpent — 150 levels across ten biomes
 
-A snake game that takes its subject seriously. Ten biomes, ten real snake
+A snake game that takes its subject seriously. 150 levels, ten biomes, ten real snake
 species and six prey animals, all drawn procedurally on HTML5 Canvas.
 
 No dependencies, no build step, no image files. Open `index.html`.
@@ -42,18 +42,39 @@ throat pulses, a rabbit that hops. Each biome draws from its own roster.
 
 ## Levels
 
-| Lv | Biome | Resident species | Binomial | Tick | To advance |
-|---:|---|---|---|---:|---:|
-| 1 | Wildflower Meadow | Grass Snake | *Natrix natrix* | 140 ms | 120 |
-| 2 | Rainforest Floor | Emerald Tree Boa | *Corallus caninus* | 126 ms | 280 |
-| 3 | Dune Sea | Sidewinder Rattlesnake | *Crotalus cerastes* | 112 ms | 470 |
-| 4 | Autumn Woodland | Corn Snake | *Pantherophis guttatus* | 99 ms | 700 |
-| 5 | Frozen Taiga | Leucistic Python | *Python bivittatus* | 88 ms | 980 |
-| 6 | Cypress Bayou | Cottonmouth | *Agkistrodon piscivorus* | 78 ms | 1320 |
-| 7 | Golden Savanna | Black Mamba | *Dendroaspis polylepis* | 68 ms | 1720 |
-| 8 | Ember Ashlands | Milk Snake | *Lampropeltis triangulum* | 58 ms | 2180 |
-| 9 | Bioluminescent Cavern | Blue Malayan Coral Snake | *Calliophis bivirgatus* | 48 ms | 2700 |
-| 10 | The Abyss | Brazilian Rainbow Boa | *Epicrates cenchria* | 38 ms | — |
+150 levels, fifteen per biome. Walls kill; most levels are walled in, and a
+handful leave the edges open so the map still wraps (the level card says
+which). Eat the level's quota of animals to move on. Dying retries that level,
+not the run — your furthest level is saved, and the menu lets you jump back to
+any level you have reached.
+
+Layouts come from 33 seeded shape generators — pillars, lanes, spirals, rings,
+combs, chevrons, pinwheels, recursive-division mazes, lattices and so on — each
+used several times with different parameters, seeds and biomes, and scheduled
+by hand so terrain and difficulty ramp rather than wander.
+
+| Levels | Biome | Resident species | Binomial |
+|---:|---|---|---|
+| 1–15 | Wildflower Meadow | Grass Snake | *Natrix natrix* |
+| 16–30 | Rainforest Floor | Emerald Tree Boa | *Corallus caninus* |
+| 31–45 | Dune Sea | Sidewinder Rattlesnake | *Crotalus cerastes* |
+| 46–60 | Autumn Woodland | Corn Snake | *Pantherophis guttatus* |
+| 61–75 | Frozen Taiga | Leucistic Python | *Python bivittatus* |
+| 76–90 | Cypress Bayou | Cottonmouth | *Agkistrodon piscivorus* |
+| 91–105 | Golden Savanna | Black Mamba | *Dendroaspis polylepis* |
+| 106–120 | Ember Ashlands | Milk Snake | *Lampropeltis triangulum* |
+| 121–135 | Bioluminescent Cavern | Blue Malayan Coral Snake | *Calliophis bivirgatus* |
+| 136–150 | The Abyss | Brazilian Rainbow Boa | *Epicrates cenchria* |
+
+The prey quota rises from 4 animals on level 1 to 26 on level 150; the tick
+falls from 150 ms to 55 ms. Obstacles take the material of their biome — mossy
+stone, sandstone strata, ice, rotten cypress, basalt with molten seams,
+glowing crystal, and monoliths rimmed with starlight.
+
+Every level is checked automatically: any ground the snake cannot reach is
+turned into wall, so an animal can never spawn somewhere unwinnable. The suite
+also asserts a minimum playable area, at least four cells of runway at the
+start, and that no level is mostly wall.
 
 ## Prey
 
@@ -78,7 +99,8 @@ the habitat — frogs dominate the bayou, lizards the desert.
 | Swipe | Steer (touch) |
 | Tap | Start / restart (touch) |
 
-The map wraps at every edge. The only thing that kills you is your own body.
+Walls kill. So does your own body. Most levels are walled in; the ones that
+leave the edges open are marked on the level card.
 
 ## Running it
 
