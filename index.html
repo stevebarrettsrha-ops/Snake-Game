@@ -158,6 +158,36 @@
   button.primary{border-color:var(--brass-dim);color:var(--brass)}
   button.primary:hover{background:rgba(214,171,73,.13)}
 
+  /* customiser */
+  .panel{overflow-y:auto; justify-content:flex-start; padding-top:26px}
+  .panel h2{font-size:clamp(24px,4.5vw,34px)}
+  #skinPreview{
+    width:100%; max-width:400px; height:auto; margin:10px 0 4px;
+    background:rgba(0,0,0,.28); border:1px solid var(--rule);
+  }
+  .opts{width:100%; max-width:400px; display:flex; flex-direction:column; gap:9px; margin-top:10px}
+  .opt{display:flex; align-items:center; gap:10px}
+  .ok{
+    font-family:ui-monospace,Menlo,monospace; font-size:9.5px; letter-spacing:.15em;
+    text-transform:uppercase; color:var(--muted); width:66px; flex:0 0 66px; text-align:left;
+  }
+  .sw{display:flex; gap:5px; flex-wrap:wrap; flex:1}
+  .sw button{
+    width:24px; height:24px; padding:0; border:1px solid var(--rule); border-radius:2px;
+    cursor:pointer; background:transparent;
+  }
+  .sw button[aria-pressed="true"]{outline:2px solid var(--brass); outline-offset:1px; border-color:var(--brass)}
+  .sw.chips button{
+    width:auto; height:auto; padding:5px 9px; font-size:9.5px; letter-spacing:.11em;
+    color:var(--muted); text-transform:uppercase;
+  }
+  .sw.chips button[aria-pressed="true"]{color:var(--brass)}
+  .wearing{
+    font-family:ui-monospace,Menlo,monospace; font-size:10px; letter-spacing:.13em;
+    text-transform:uppercase; color:var(--muted); margin-top:14px;
+  }
+  .wearing b{color:var(--brass); font-weight:500}
+
   .sr-only{
     position:absolute;width:1px;height:1px;padding:0;margin:-1px;
     overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;
@@ -249,11 +279,36 @@
     </div>
   </div>
 
+    <div class="overlay panel" id="customScreen" role="dialog" aria-labelledby="cust-title">
+      <h2 id="cust-title">Your snake</h2>
+      <canvas id="skinPreview" width="800" height="240" role="img"
+              aria-label="Preview of your snake design"></canvas>
+      <div class="opts">
+        <div class="opt"><span class="ok" id="lb-base">Base</span>
+          <div class="sw" id="swBase" role="group" aria-labelledby="lb-base"></div></div>
+        <div class="opt"><span class="ok" id="lb-mark">Markings</span>
+          <div class="sw" id="swMark" role="group" aria-labelledby="lb-mark"></div></div>
+        <div class="opt"><span class="ok" id="lb-pat">Pattern</span>
+          <div class="sw chips" id="swPattern" role="group" aria-labelledby="lb-pat"></div></div>
+        <div class="opt"><span class="ok" id="lb-eye">Eyes</span>
+          <div class="sw" id="swEye" role="group" aria-labelledby="lb-eye"></div></div>
+        <div class="opt"><span class="ok" id="lb-pup">Pupil</span>
+          <div class="sw chips" id="swPupil" role="group" aria-labelledby="lb-pup"></div></div>
+      </div>
+      <p class="wearing">Playing as <b id="wearing">the wild species</b></p>
+      <div class="picker">
+        <button id="useCustomBtn" class="primary">Use my snake</button>
+        <button id="useWildBtn">Use wild species</button>
+        <button id="closeCustomBtn">Done</button>
+      </div>
+    </div>
+
   <div class="foot">
     <div class="keys"><b>Arrows</b> or <b>WASD</b> steer &nbsp;·&nbsp; <b>Space</b> starts and pauses</div>
     <div class="btns">
       <button id="startBtn" class="primary" aria-label="Start or retry">Start</button>
       <button id="pauseBtn" aria-label="Pause or resume game">Pause</button>
+      <button id="snakeBtn" aria-label="Customise your snake">Snake</button>
       <button id="restartBtn" aria-label="Back to the menu">Menu</button>
     </div>
   </div>
@@ -813,16 +868,25 @@ function resampleUniform(pts, ds) {
 /* Body thickness as a fraction of full width, measured from the head.
    Neck swells over a fixed distance, tail tapers over a fixed distance, so the
    silhouette stays anatomically sane whether the snake is 3 or 60 segments. */
-function makeWidthProfile(totalLen) {
+function makeWidthProfile(totalLen, bumps) {
     const neck = Math.min(totalLen * 0.30, 58);
     const taper = Math.min(totalLen * 0.34, 96);
     const taperStart = totalLen - taper;
+    const nb = bumps ? bumps.length : 0;
     return function (s) {
         let w = 1;
         if (s < neck) w = 0.80 + 0.20 * Math.sin((s / neck) * Math.PI * 0.5);
         if (s > taperStart) {
             const u = (s - taperStart) / taper;
             w *= Math.pow(1 - u, 0.46);
+        }
+        // Swallowed prey shows as a lump in the body wall. A gaussian keeps the
+        // shoulders smooth, so the skin appears stretched over the bolus rather
+        // than kinked around a box.
+        for (let i = 0; i < nb; i++) {
+            const b = bumps[i];
+            const d = (s - b.s) / b.hw;
+            if (d > -3.2 && d < 3.2) w *= 1 + b.amp * Math.exp(-d * d);
         }
         return Math.max(w, 0.015);
     };
@@ -925,7 +989,7 @@ function undulate(rs, sOffset, total, und) {
    ========================================================================== */
 const SLICE_LEN = 8;
 
-function renderSnakeBody(ctx, groups, speciesKey, BW, und) {
+function renderSnakeBody(ctx, groups, speciesKey, BW, und, bumps) {
     const tex = getSkinTexture(speciesKey);
     const TW = tex.width;
 
@@ -947,7 +1011,7 @@ function renderSnakeBody(ctx, groups, speciesKey, BW, und) {
     }
     if (total < 4) return null;
 
-    const widthOf = makeWidthProfile(total);
+    const widthOf = makeWidthProfile(total, bumps);
     const half = BW * 0.5;
     const offs = [];
     let acc = 0;
@@ -1333,7 +1397,7 @@ function renderRattle(ctx, x, y, angle, BW, frame) {
 /* Top-level: body + head + tongue (+ rattle). `groups` is head-first. */
 function renderSnake(ctx, groups, speciesKey, BW, frame, opts) {
     opts = opts || {};
-    const info = renderSnakeBody(ctx, groups, speciesKey, BW, opts.undulation);
+    const info = renderSnakeBody(ctx, groups, speciesKey, BW, opts.undulation, opts.bumps);
 
     const g0 = groups[0];
     if (!g0 || g0.length < 1) return;
@@ -1368,6 +1432,7 @@ function renderSnake(ctx, groups, speciesKey, BW, frame, opts) {
         ext = cyc < 0.42 ? Math.sin(cyc / 0.42 * Math.PI) : 0;
     }
     renderTongue(ctx, head.x, head.y, angle, speciesKey, BW, frame, ext);
+    return { head: head, angle: angle, snout: BW * 1.90 * 0.55 };
 }
 
 /* ==========================================================================
@@ -1378,12 +1443,12 @@ function renderSnake(ctx, groups, speciesKey, BW, frame, opts) {
    +/- 1.0 and scaled by the caller.
    ========================================================================== */
 const PREY = {
-    APPLE:  { points: 10, weight: 0.30, r: 0.62, label: 'Windfall Apple' },
-    EGG:    { points: 15, weight: 0.14, r: 0.55, label: 'Quail Egg' },
-    MOUSE:  { points: 20, weight: 0.24, r: 0.70, label: 'Field Mouse' },
-    FROG:   { points: 30, weight: 0.14, r: 0.68, label: 'Marsh Frog' },
-    LIZARD: { points: 40, weight: 0.11, r: 0.78, label: 'Sand Lizard' },
-    RABBIT: { points: 60, weight: 0.07, r: 0.92, label: 'Young Rabbit' }
+    APPLE:  { points: 10, weight: 0.30, r: 0.62, bulge: 0.46, label: 'Windfall Apple' },
+    EGG:    { points: 15, weight: 0.14, r: 0.55, bulge: 0.40, label: 'Quail Egg' },
+    MOUSE:  { points: 20, weight: 0.24, r: 0.70, bulge: 0.56, label: 'Field Mouse' },
+    FROG:   { points: 30, weight: 0.14, r: 0.68, bulge: 0.66, label: 'Marsh Frog' },
+    LIZARD: { points: 40, weight: 0.11, r: 0.78, bulge: 0.74, label: 'Sand Lizard' },
+    RABBIT: { points: 60, weight: 0.07, r: 0.92, bulge: 1.00, label: 'Young Rabbit' }
 };
 
 /* Soft contact shadow. `lift` 0..1 shrinks and fades it as the animal hops. */
@@ -2849,6 +2914,108 @@ function paintWalls(c, blocked, n, tile, biomeId, seed) {
     }
 }
 
+/* ==========================================================================
+   PLAYER-DESIGNED SNAKE
+   The ten wild species are fixed reference animals. A player's own snake is
+   assembled from the same parts — the pattern generators, scale relief and
+   cylinder shading are shared — so a custom design is rendered by exactly the
+   same pipeline and looks like it belongs beside the real ones.
+   ========================================================================== */
+const SKIN_PARTS = {
+    /* base colours, with the flank and belly tones derived so a player cannot
+       pick a combination that destroys the cylinder shading */
+    base: [
+        { id: 'moss',    name: 'Moss',      hex: '#6f8f42' },
+        { id: 'emerald', name: 'Emerald',   hex: '#1f9b47' },
+        { id: 'olive',   name: 'Olive',     hex: '#7d7a3c' },
+        { id: 'sand',    name: 'Sand',      hex: '#c8a878' },
+        { id: 'ember',   name: 'Ember',     hex: '#d4762e' },
+        { id: 'crimson', name: 'Crimson',   hex: '#bb2f24' },
+        { id: 'plum',    name: 'Plum',      hex: '#6d3a86' },
+        { id: 'cobalt',  name: 'Cobalt',    hex: '#27408f' },
+        { id: 'teal',    name: 'Teal',      hex: '#1d7f7a' },
+        { id: 'slate',   name: 'Slate',     hex: '#5d6470' },
+        { id: 'ivory',   name: 'Ivory',     hex: '#e4dfd2' },
+        { id: 'ink',     name: 'Ink',       hex: '#2b2b33' }
+    ],
+    mark: [
+        { id: 'charcoal', name: 'Charcoal', hex: '#211f1c' },
+        { id: 'cream',    name: 'Cream',    hex: '#f0e7cf' },
+        { id: 'rust',     name: 'Rust',     hex: '#a83a1c' },
+        { id: 'gold',     name: 'Gold',     hex: '#d8ab3a' },
+        { id: 'jade',     name: 'Jade',     hex: '#2f8a52' },
+        { id: 'violet',   name: 'Violet',   hex: '#7a49b8' },
+        { id: 'sky',      name: 'Sky',      hex: '#4aa8e0' },
+        { id: 'rose',     name: 'Rose',     hex: '#d76a86' }
+    ],
+    pattern: [
+        { id: 'saddles',         name: 'Saddles' },
+        { id: 'borderedSaddles', name: 'Bordered' },
+        { id: 'bands',           name: 'Bands' },
+        { id: 'tricolour',       name: 'Rings' },
+        { id: 'ocelli',          name: 'Eyespots' },
+        { id: 'lightningBars',   name: 'Lightning' },
+        { id: 'neonStripes',     name: 'Stripes' },
+        { id: 'barsCollar',      name: 'Flank bars' },
+        { id: 'plain',           name: 'Plain' }
+    ],
+    eye: [
+        { id: 'amber',  name: 'Amber',  hex: '#c8a33a' },
+        { id: 'copper', name: 'Copper', hex: '#c94a22' },
+        { id: 'lime',   name: 'Lime',   hex: '#d8e86a' },
+        { id: 'ice',    name: 'Ice',    hex: '#9fc4d8' },
+        { id: 'ruby',   name: 'Ruby',   hex: '#b02a3a' },
+        { id: 'jet',    name: 'Jet',    hex: '#26262c' }
+    ],
+    pupil: [
+        { id: 'round', name: 'Round' },
+        { id: 'slit',  name: 'Slit'  }
+    ]
+};
+
+const DEFAULT_SKIN = {
+    base: 'emerald', mark: 'charcoal', pattern: 'saddles',
+    eye: 'amber', pupil: 'round', gloss: 0.36
+};
+
+function pickPart(list, id) {
+    for (let i = 0; i < list.length; i++) if (list[i].id === id) return list[i];
+    return list[0];
+}
+
+/* Build (or rebuild) SPECIES.custom from a player's choices. Derives the flank
+   and belly tones from the base so the body still reads as a lit cylinder
+   whatever colour is chosen, and drops the cached texture so the next draw
+   picks up the change. */
+function setCustomSkin(cfg) {
+    cfg = cfg || DEFAULT_SKIN;
+    const base = pickPart(SKIN_PARTS.base, cfg.base).hex;
+    const mark = pickPart(SKIN_PARTS.mark, cfg.mark).hex;
+    const eye  = pickPart(SKIN_PARTS.eye,  cfg.eye).hex;
+    const light = hexToRgb(base);
+    const luma = (light.r * 0.299 + light.g * 0.587 + light.b * 0.114) / 255;
+
+    SPECIES.custom = {
+        name: 'Your snake',
+        latin: 'Serpens tua',
+        dorsal: base,
+        edge:   shade(base, luma > 0.62 ? -34 : -46),
+        belly:  shade(base, 26),
+        mark:   mark,
+        mark2:  luma > 0.55 ? shade(mark, -28) : shade(mark, 34),
+        pattern: pickPart(SKIN_PARTS.pattern, cfg.pattern).id,
+        eye: eye,
+        pupil: pickPart(SKIN_PARTS.pupil, cfg.pupil).id,
+        tongue: '#1f1f1f',
+        gloss: 0.36,
+        period: 56
+    };
+    if (cfg.pattern === 'barsCollar') SPECIES.custom.collar = mark;
+    HEAD_FORM.custom = { broad: 1.0 };
+    delete skinTextureCache.custom;
+    return SPECIES.custom;
+}
+
 
 /* ==========================================================================
    LEVELS
@@ -3499,6 +3666,9 @@ function buildLevel(n) {
     const retryBtn = $('retryBtn'), continueBtn = $('continueBtn'), newGameBtn = $('newGameBtn');
     const levelPick = $('levelPick'), contWrap = $('continueWrap');
     const announcer = $('game-announcer');
+    const customScreen = $('customScreen'), snakeBtn = $('snakeBtn');
+    const skinPreview = $('skinPreview'), wearingEl = $('wearing');
+    const closeCustomBtn = $('closeCustomBtn'), useCustomBtn = $('useCustomBtn'), useWildBtn = $('useWildBtn');
 
     const bgCanvas = document.createElement('canvas');
     bgCanvas.width = bgCanvas.height = CANVAS_SIZE;
@@ -3520,6 +3690,11 @@ function buildLevel(n) {
     let frame = 0, steps = 0, idleDrift = 0;
     let particles = [], bursts = [], floaters = [];
     let banner = null, deathFlash = 0, gape = 0;
+    let swallow = null;        // prey being drawn into the mouth right now
+    let bumps = [];            // boluses working their way down the body
+    let digestClock = 0;       // only advances while playing, so pausing does not digest
+    let headInfo = null;       // where the mouth ended up on the last draw
+    let strike = 0;            // 0..1, forces the jaw wide on the strike
     let lastTime = 0, accumulated = 0;
     let animationId = null, idleId = null;
     let touchStartX = 0, touchStartY = 0;
@@ -3531,7 +3706,20 @@ function buildLevel(n) {
     let highScore = fetchNum('serpentHighScore');
     let furthest = Math.min(LEVEL_COUNT, Math.max(1, fetchNum('serpentFurthest') || 1));
 
+    function loadSkin() {
+        try {
+            const raw = localStorage.getItem('serpentSkin');
+            if (!raw) return Object.assign({}, DEFAULT_SKIN);
+            return Object.assign({}, DEFAULT_SKIN, JSON.parse(raw));
+        } catch (e) { return Object.assign({}, DEFAULT_SKIN); }
+    }
+    let skin = loadSkin();
+    let useCustom = false;
+    try { useCustom = localStorage.getItem('serpentUseCustom') === '1'; } catch (e) { }
+    setCustomSkin(skin);
+
     const biome = () => BIOMES[level.biome];
+    const activeSpecies = () => useCustom ? 'custom' : biome().species;
     const announce = m => { if (announcer) announcer.textContent = m; };
     const showOverlay = (el, on) => { if (el) el.classList.toggle('show', on); };
     const isWall = (x, y) => level.blocked[y * GRID_SIZE + x] === 1;
@@ -3639,6 +3827,7 @@ function buildLevel(n) {
         pending = [];
         frame = 0; steps = 0; idleDrift = 0;
         bursts = []; floaters = []; deathFlash = 0; gape = 0;
+        bumps = []; swallow = null; strike = 0; digestClock = 0; headInfo = null;
         lastTime = 0; accumulated = 0;
 
         paintBiome(bgCtx, CANVAS_SIZE, level.biome);
@@ -3658,7 +3847,7 @@ function buildLevel(n) {
 
         banner = {
             t: 0, level: levelNo, name: level.meta.name,
-            species: SPECIES[biome().species].name, region: biome().name,
+            species: SPECIES[activeSpecies()].name, region: biome().name,
             wrap: level.meta.wrap
         };
     }
@@ -3673,8 +3862,43 @@ function buildLevel(n) {
         goalFill.style.width = Math.min(100, (eaten / m.goal) * 100).toFixed(1) + '%';
         levelNameEl.textContent = m.name;
         biomeEl.textContent = biome().name;
-        speciesEl.textContent = SPECIES[biome().species].name;
+        speciesEl.textContent = useCustom ? 'Your snake' : SPECIES[biome().species].name;
         openEdgeEl.hidden = !m.wrap;
+    }
+
+    /* ==================== DIGESTION ====================
+       A swallowed animal shows as a lump in the body wall that works its way
+       down over BOLUS_TTL and shrinks away. The clock only runs while playing,
+       so a paused snake does not digest. */
+    const BOLUS_TTL = 35000;              // 35 seconds, as asked
+
+    function addBolus(type) {
+        bumps.push({
+            born: digestClock,
+            amp0: (PREY[type].bulge || 0.5),
+            type: type
+        });
+    }
+
+    /* Resolve every live bolus into the {s, amp, hw} the renderer wants, and
+       drop the ones that have finished digesting. */
+    function activeBumps() {
+        if (!bumps.length) return null;
+        const bodyLen = Math.max(BODY_W * 3, snake.length * TILE);
+        const out = [];
+        for (let i = bumps.length - 1; i >= 0; i--) {
+            const b = bumps[i];
+            const u = (digestClock - b.born) / BOLUS_TTL;
+            if (u >= 1) { bumps.splice(i, 1); continue; }
+            // eases away from the head, so it is quick to clear the throat and
+            // then creeps along the gut
+            const travel = 1 - Math.pow(1 - u, 2.2);
+            const s = BODY_W * 1.15 + travel * (bodyLen * 0.70 - BODY_W * 1.15);
+            const amp = b.amp0 * Math.pow(1 - u, 0.55);
+            if (amp < 0.02) continue;
+            out.push({ s: s, amp: amp, hw: BODY_W * (0.80 + b.amp0 * 0.55) });
+        }
+        return out.length ? out : null;
     }
 
     /* ==================== SNAKE GEOMETRY ==================== */
@@ -3716,9 +3940,10 @@ function buildLevel(n) {
         const groups = snakeGroups(t);
         if (!groups.length) return;
         const travelled = gameState === 'playing' ? (steps + t) * TILE : idleDrift;
-        renderSnake(ctx, groups, biome().species, BODY_W, frame, {
+        headInfo = renderSnake(ctx, groups, activeSpecies(), BODY_W, frame, {
             headAngle: Math.atan2(direction.y, direction.x),
-            gape: gape,
+            gape: Math.max(gape, strike),
+            bumps: activeBumps(),
             undulation: { amp: WAVE_AMP, lambda: WAVE_LENGTH, travelled: travelled,
                           rampHead: WAVE_HEAD, rampTail: WAVE_TAIL }
         });
@@ -3755,6 +3980,57 @@ function buildLevel(n) {
         if (food.x === undefined) return;
         renderPrey(ctx, food.x * TILE + TILE / 2, food.y * TILE + TILE / 2,
                    food.type, TILE * 0.52 * (PREY[food.type].r / 0.7), frame, 0);
+    }
+
+    /* ==================== THE SWALLOW ====================
+       Prey used to vanish the instant the head reached it. Now the strike is
+       visible: the jaw goes wide, the animal is drawn into the mouth over
+       SWALLOW_MS while shrinking and turning to line up with the throat, and
+       the gulp hands off to the bolus travelling down the neck. */
+    const SWALLOW_MS = 460;
+
+    function beginSwallow(type, wx, wy) {
+        swallow = { type: type, t: 0, x: wx, y: wy, spin: 0 };
+        strike = 1;
+    }
+
+    function updateSwallow(dt) {
+        if (strike > 0) strike = Math.max(0, strike - dt / 260);
+        if (!swallow) return;
+        swallow.t += dt;
+        if (swallow.t >= SWALLOW_MS) {
+            addBolus(swallow.type);          // it is in the neck now
+            swallow = null;
+        }
+    }
+
+    function drawSwallow() {
+        if (!swallow || !headInfo) return;
+        const u = Math.min(1, swallow.t / SWALLOW_MS);
+        // mouth position: the snout tip, wherever the head currently is
+        const mx = headInfo.head.x + Math.cos(headInfo.angle) * headInfo.snout;
+        const my = headInfo.head.y + Math.sin(headInfo.angle) * headInfo.snout;
+
+        // the animal is hauled from where it was caught to the mouth, and keeps
+        // being dragged as the snake moves on
+        const ease = 1 - Math.pow(1 - u, 2.4);
+        const px = swallow.x + (mx - swallow.x) * ease;
+        const py = swallow.y + (my - swallow.y) * ease;
+
+        // shrinks as it goes down, and the last fifth is inside the head
+        const base = TILE * 0.52 * (PREY[swallow.type].r / 0.7);
+        const scale = Math.max(0, 1 - Math.pow(u, 1.7) * 1.06);
+        if (scale <= 0.02) return;
+
+        ctx.save();
+        // squeezed lengthwise by the jaws as it is worked down
+        ctx.translate(px, py);
+        ctx.rotate(headInfo.angle + Math.PI / 2);
+        ctx.scale(1 - u * 0.34, 1 + u * 0.20);
+        ctx.rotate(-(headInfo.angle + Math.PI / 2));
+        ctx.globalAlpha = u > 0.82 ? Math.max(0, (1 - u) / 0.18) : 1;
+        renderPrey(ctx, 0, 0, swallow.type, base * scale, frame, headInfo.angle + Math.PI / 2);
+        ctx.restore();
     }
 
     /* ==================== EFFECTS ==================== */
@@ -3903,6 +4179,7 @@ function buildLevel(n) {
             score += food.points;
             eaten++;
             const fx = food.x * TILE + TILE / 2, fy = food.y * TILE + TILE / 2;
+            beginSwallow(food.type, fx, fy);
             spawnBurst(fx, fy, biome().particle.color);
             floaters.push({ x: fx, y: fy - 12, text: '+' + food.points, color: '#f6e7bd', alpha: 1 });
             if (score > highScore) { highScore = score; store('serpentHighScore', highScore); }
@@ -3934,7 +4211,7 @@ function buildLevel(n) {
         gameState = 'cleared';
         if (animationId) { cancelAnimationFrame(animationId); animationId = null; }
         banner = { t: 0, cleared: true, level: levelNo, name: level.meta.name,
-                   species: SPECIES[biome().species].name, region: biome().name,
+                   species: SPECIES[activeSpecies()].name, region: biome().name,
                    wrap: level.meta.wrap };
         announce('Level ' + levelNo + ' cleared.');
         startIdle();
@@ -3969,6 +4246,7 @@ function buildLevel(n) {
         drawParticles();
         drawFood();
         drawSnake();
+        drawSwallow();                    // after the snake, so it reads as going *into* the mouth
         ctx.drawImage(obsCanvas, 0, 0);   // walls occlude anything pressed against them
         drawBursts();
         drawFloaters();
@@ -3998,6 +4276,8 @@ function buildLevel(n) {
             lastTime = ts;
             if (dt > 250) dt = 250;
             accumulated += dt;
+            digestClock += dt;
+            updateSwallow(dt);
             const speed = level.meta.speed;
             let guard = 0;
             while (accumulated >= speed && guard++ < 8) {
@@ -4039,8 +4319,14 @@ function buildLevel(n) {
             if (gameState === 'playing') { idleId = null; return; }
             if (ts - last >= IDLE_FRAME_MS) {
                 frame++;
-                if (gameState !== 'paused') idleDrift += 1.5;
+                if (gameState !== 'paused') {
+                    idleDrift += 1.5;
+                    updateSwallow(IDLE_FRAME_MS);
+                }
                 updateParticles(); draw(); last = ts;
+                if (customScreen && customScreen.classList.contains('show')) {
+                    previewFrame++; drawSkinPreview();
+                }
             }
             idleId = requestAnimationFrame(idle);
         })(0);
@@ -4111,6 +4397,106 @@ function buildLevel(n) {
         contWrap.hidden = furthest <= 1;
     }
 
+    /* ==================== CUSTOMISER ==================== */
+    const SWATCH_FIELDS = [
+        { el: 'swBase',    field: 'base',    list: 'base',    swatch: true  },
+        { el: 'swMark',    field: 'mark',    list: 'mark',    swatch: true  },
+        { el: 'swPattern', field: 'pattern', list: 'pattern', swatch: false },
+        { el: 'swEye',     field: 'eye',     list: 'eye',     swatch: true  },
+        { el: 'swPupil',   field: 'pupil',   list: 'pupil',   swatch: false }
+    ];
+
+    function saveSkin() {
+        try {
+            localStorage.setItem('serpentSkin', JSON.stringify(skin));
+            localStorage.setItem('serpentUseCustom', useCustom ? '1' : '0');
+        } catch (e) { /* private mode */ }
+    }
+
+    function buildCustomiser() {
+        SWATCH_FIELDS.forEach(function (spec) {
+            const host = $(spec.el);
+            if (!host) return;
+            host.innerHTML = '';
+            SKIN_PARTS[spec.list].forEach(function (part) {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                if (spec.swatch) {
+                    btn.style.background = part.hex;
+                    btn.title = part.name;
+                    btn.setAttribute('aria-label', part.name);
+                } else {
+                    btn.textContent = part.name;
+                }
+                btn.addEventListener('click', function () {
+                    skin[spec.field] = part.id;
+                    setCustomSkin(skin);
+                    if (!useCustom) { useCustom = true; }   // choosing implies wanting it
+                    saveSkin();
+                    refreshCustomiser();
+                    updateHud();
+                });
+                host.appendChild(btn);
+            });
+        });
+        refreshCustomiser();
+    }
+
+    function refreshCustomiser() {
+        SWATCH_FIELDS.forEach(function (spec) {
+            const host = $(spec.el);
+            if (!host) return;
+            const list = SKIN_PARTS[spec.list];
+            for (let i = 0; i < host.children.length; i++)
+                host.children[i].setAttribute('aria-pressed',
+                    list[i].id === skin[spec.field] ? 'true' : 'false');
+        });
+        if (wearingEl)
+            wearingEl.textContent = useCustom ? 'your own snake'
+                                              : 'the wild species of each biome';
+        drawSkinPreview();
+    }
+
+    /* The preview uses the real renderer, so what you pick is exactly what you
+       get on the board — including a bolus, to show the digestion bulge. */
+    let previewFrame = 0;
+    function drawSkinPreview() {
+        if (!skinPreview) return;
+        const c = skinPreview.getContext('2d');
+        if (!c) return;
+        const W = skinPreview.width, H = skinPreview.height;
+        c.clearRect(0, 0, W, H);
+        const g0 = c.createLinearGradient(0, 0, 0, H);
+        g0.addColorStop(0, '#20201a');
+        g0.addColorStop(1, '#15150f');
+        c.fillStyle = g0;
+        c.fillRect(0, 0, W, H);
+        c.imageSmoothingQuality = 'high';
+        const pts = [];
+        for (let i = 0; i < 30; i++) {
+            const t = i / 29;
+            pts.push({ x: W - 60 - t * (W - 130), y: H / 2 + Math.sin(t * Math.PI * 2.2) * H * 0.22 });
+        }
+        renderSnake(c, [pts], 'custom', 30, previewFrame, {
+            bumps: [{ s: 132, amp: 0.72, hw: 21 }]
+        });
+    }
+
+    function openCustomiser() {
+        if (gameState === 'playing') togglePause();
+        showOverlay(startScreen, false);
+        showOverlay(gameOverScreen, false);
+        showOverlay(customScreen, true);
+        refreshCustomiser();
+        announce('Snake customiser');
+    }
+
+    function closeCustomiser() {
+        showOverlay(customScreen, false);
+        if (gameState === 'start') showOverlay(startScreen, true);
+        draw();
+    }
+
     /* ==================== INPUT ==================== */
     function turn(dx, dy) {
         if (pending.length >= 2) return;
@@ -4127,6 +4513,10 @@ function buildLevel(n) {
     };
 
     document.addEventListener('keydown', function (e) {
+        if (customScreen && customScreen.classList.contains('show')) {
+            if (e.key === 'Escape') { e.preventDefault(); closeCustomiser(); }
+            return;
+        }
         if (e.code === 'Space') {
             e.preventDefault();
             if (gameState === 'start') beginAt(parseInt(levelPick && levelPick.value, 10) || 1);
@@ -4170,6 +4560,16 @@ function buildLevel(n) {
         beginAt(parseInt(levelPick.value, 10) || furthest);
     });
     if (newGameBtn) newGameBtn.addEventListener('click', function () { beginAt(1); });
+    if (snakeBtn) snakeBtn.addEventListener('click', openCustomiser);
+    if (closeCustomBtn) closeCustomBtn.addEventListener('click', closeCustomiser);
+    if (useCustomBtn) useCustomBtn.addEventListener('click', function () {
+        useCustom = true; saveSkin(); refreshCustomiser(); updateHud(); draw();
+        announce('Playing as your own snake');
+    });
+    if (useWildBtn) useWildBtn.addEventListener('click', function () {
+        useCustom = false; saveSkin(); refreshCustomiser(); updateHud(); draw();
+        announce('Playing as the wild species of each biome');
+    });
 
     canvas.addEventListener('contextlost', function (e) {
         e.preventDefault();
@@ -4192,6 +4592,7 @@ function buildLevel(n) {
 
     /* ==================== BOOT ==================== */
     buildLevelPicker();
+    buildCustomiser();
     loadLevel(furthest);
     banner = null;
     showOverlay(startScreen, true);

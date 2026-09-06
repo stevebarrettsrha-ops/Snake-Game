@@ -30,6 +30,28 @@ throw a wave on top of it. The grid path is smoothed before it is drawn — with
 a hard cap on how far the drawn body may stray from the cells it actually
 occupies — so turns read as swept arcs rather than square corners.
 
+**Eating is an event.** The strike opens the jaw, the animal is drawn into the
+mouth over about half a second — shrinking and turning to line up with the
+throat, still being dragged along as the snake moves on — and the gulp hands
+off to a bolus in the neck.
+
+**And it stays with you.** A swallowed animal shows as a lump in the body wall
+that works its way down the snake and digests away over 35 seconds. The lump is
+a gaussian widening of the body's width profile, so the skin stretches over it
+rather than kinking around it, and the scale texture spreads with it. Bigger
+prey leaves a bigger lump — a rabbit is unmistakable, a quail egg is a slight
+swelling. The digestion clock only runs while you are playing, so pausing does
+not digest.
+
+**Bring your own snake.** The ten wild species are fixed reference animals, but
+you can design your own: base colour, marking colour, one of nine dorsal
+patterns, eye colour and a round or slit pupil. It is assembled from the same
+parts the wild species use — the same pattern generators, scale relief and
+cylinder shading — so a custom design is rendered by exactly the same pipeline
+and sits beside the real ones rather than looking pasted on. The preview in the
+customiser is the real renderer, digestion bulge and all. Your design is saved,
+and you can switch back to the wild species of each biome whenever you like.
+
 **Ten places, not ten palettes.** Every biome has its own terrain generator,
 seeded so a level looks the same each time you reach it. The rainforest grows
 ferns, moss beds and mossy fallen logs under canopy light shafts; the dune sea
@@ -96,6 +118,7 @@ the habitat — frogs dominate the bayou, lizards the desert.
 |---|---|
 | Arrow keys / WASD | Steer |
 | Space | Start · pause · resume |
+| Snake button | Design your own snake |
 | Swipe | Steer (touch) |
 | Tap | Start / restart (touch) |
 
