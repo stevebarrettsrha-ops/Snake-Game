@@ -1,9 +1,13 @@
-# Serpent — 150 levels across ten biomes
+# Serpent — 150 levels, ten biomes, and an arena
 
 A snake game that takes its subject seriously. 150 levels, ten biomes, ten real snake
 species and six prey animals, all drawn procedurally on HTML5 Canvas.
 
-No dependencies, no build step, no image files. Open `index.html`.
+No dependencies, no build step, no image files.
+
+- **Campaign** — open `index.html`. 150 levels, single player, nothing to install.
+- **Battle Royale** — `node server.js`, then open the address it prints. Everyone
+  on the network joins one huge shared arena.
 
 ## Design
 
@@ -43,8 +47,9 @@ prey leaves a bigger lump — a rabbit is unmistakable, a quail egg is a slight
 swelling. The digestion clock only runs while you are playing, so pausing does
 not digest.
 
-**Bring your own snake.** The ten wild species are fixed reference animals, but
-you can design your own: base colour, marking colour, one of nine dorsal
+**Wear any snake you like.** Play as whichever real species lives in the biome
+you are in, or pin one of the ten for the whole run — a black mamba in the
+snowfield if you want. Or design your own: base colour, marking colour, one of nine dorsal
 patterns, eye colour and a round or slit pupil. It is assembled from the same
 parts the wild species use — the same pattern generators, scale relief and
 cylinder shading — so a custom design is rendered by exactly the same pipeline
@@ -61,6 +66,43 @@ beneath the basalt.
 **Prey that is drawn, not typed.** Six animals with procedural fur, skin and
 idle animation — a mouse that breathes and twitches its whiskers, a frog whose
 throat pulses, a rabbit that hops. Each biome draws from its own roster.
+
+## Battle Royale
+
+A second mode, in its own page, sharing the campaign's look and everything the
+renderer knows how to draw. Only the game underneath is different.
+
+```bash
+node server.js          # prints a localhost address and a LAN address
+```
+
+Open the address, pick a snake, and join. Everyone who opens it is in the same
+arena. No npm install — the WebSocket handshake and frame codec are implemented
+against RFC 6455 inside `server.js`, because adding a dependency to a project
+whose whole point is not having any would be a poor trade.
+
+**The world is 200 × 200 cells** — sixty-four times the area of a campaign
+board — and it is walled on every side. Nothing wraps: run into the edge and
+you are finished. The camera follows you and a minimap shows how little of it
+you can see at once.
+
+**Size is everything.** Eat to grow; every five segments is a level, and you get
+visibly thicker as you go. When two snakes touch, the higher level survives and
+the lower one dies. Equal levels kill each other. A dead snake collapses into
+prey, so a kill is worth chasing.
+
+**Two power-ups, arena only.**
+
+| | Effect | Lasts |
+|---|---|---:|
+| **Shield** | Nothing can eat you, and anything that tries dies instead | 8s |
+| **Frenzy** | Move 1.7× faster and take double growth from every animal | 7s |
+
+The server is authoritative: clients send a heading and render what they are
+sent, so nobody's browser gets to decide who ate whom. It interpolates between
+snapshots at ~11 ticks a second, which is enough to look continuous. Bots keep
+the arena inhabited when few people are on, and they hunt, avoid walls, and
+refuse to pick fights they would lose.
 
 ## Levels
 
@@ -118,7 +160,7 @@ the habitat — frogs dominate the bayou, lizards the desert.
 |---|---|
 | Arrow keys / WASD | Steer |
 | Space | Start · pause · resume |
-| Snake button | Design your own snake |
+| Snake button | Choose a species, or design your own |
 | Swipe | Steer (touch) |
 | Tap | Start / restart (touch) |
 
