@@ -416,8 +416,11 @@ function getSkinTexture(speciesKey) {
     if (skinTextureCache[speciesKey]) return skinTextureCache[speciesKey];
     const sp = SPECIES[speciesKey];
     const P = sp.period * TEX_PX;                     // pattern period, texture px
-    const reps = Math.max(4, Math.ceil(512 / P));
-    const W = P * reps;                               // always a multiple of SLICE*TEX_PX
+    let reps = Math.max(4, Math.ceil(512 / P));
+    // Keep the strip an exact multiple of the widest slice (16 body px = 32
+    // texture px) so tiling stays seamless at every slice size we use.
+    while ((P * reps) % 32 !== 0) reps++;
+    const W = P * reps;
 
     const cv = document.createElement('canvas');
     cv.width = W; cv.height = TEX_H;
@@ -724,6 +727,42 @@ function paintScales(c, sp, W, rng) {
    BODY GEOMETRY
    ========================================================================== */
 
+/* Binomial smoothing of the grid path before it is drawn. Chaikin alone
+   converges on a quadratic B-spline, whose corner radius tops out at about
+   half a tile — still visibly an elbow. Pre-smoothing widens the arc a snake
+   sweeps through a turn.
+
+   Two safeguards keep this honest. The filter eases in over the first few
+   points so the head stays on its own cell, and every point is then clamped to
+   within `maxDev` of where it started. Without the clamp a tight staircase —
+   which players make constantly — would be averaged flat, drawing the body
+   somewhere the snake is not. */
+function smoothPath(pts, passes, maxDev) {
+    if (pts.length < 3) return pts;
+    let p = pts;
+    for (let k = 0; k < passes; k++) {
+        const out = [p[0]];
+        for (let i = 1; i < p.length - 1; i++) {
+            const w = Math.min(1, i / 2.5) * 0.5;
+            out.push({
+                x: p[i].x * (1 - w) + (p[i - 1].x + p[i + 1].x) * 0.5 * w,
+                y: p[i].y * (1 - w) + (p[i - 1].y + p[i + 1].y) * 0.5 * w
+            });
+        }
+        out.push(p[p.length - 1]);
+        p = out;
+    }
+    for (let i = 0; i < p.length; i++) {
+        const dx = p[i].x - pts[i].x, dy = p[i].y - pts[i].y;
+        const d = Math.sqrt(dx * dx + dy * dy);
+        if (d > maxDev) {
+            const s = maxDev / d;
+            p[i] = { x: pts[i].x + dx * s, y: pts[i].y + dy * s };
+        }
+    }
+    return p;
+}
+
 /* Chaikin corner-cutting: smooths a grid polyline without the overshoot that
    Catmull-Rom produces on 90-degree turns. Endpoints are preserved. */
 function chaikin(pts, iterations) {
@@ -749,7 +788,8 @@ function resampleUniform(pts, ds) {
     let carry = 0;
     for (let i = 0; i < pts.length - 1; i++) {
         const a = pts[i], b = pts[i + 1];
-        const seg = Math.hypot(b.x - a.x, b.y - a.y);
+        const dxs = b.x - a.x, dys = b.y - a.y;
+        const seg = Math.sqrt(dxs * dxs + dys * dys);
         if (seg <= 1e-6) continue;
         let d = ds - carry;
         while (d <= seg) {
@@ -761,7 +801,8 @@ function resampleUniform(pts, ds) {
     }
     const last = pts[pts.length - 1];
     const tail = out[out.length - 1];
-    if (Math.hypot(last.x - tail.x, last.y - tail.y) > ds * 0.4) out.push(last);
+    const dxe = last.x - tail.x, dye = last.y - tail.y;
+    if (Math.sqrt(dxe * dxe + dye * dye) > ds * 0.4) out.push(last);
     return { pts: out, len: (out.length - 1) * ds, ds: ds };
 }
 
@@ -783,28 +824,93 @@ function makeWidthProfile(totalLen) {
     };
 }
 
-/* Outline of a tapered tube around a centreline. */
-function buildTubePath(ctx, rs, widthOf, halfBW) {
-    const P = rs.pts, ds = rs.ds, n = P.length;
-    const nx = [], ny = [];
+/* Cache the outward normal at every sample. The body outline is needed several
+   times a frame and this is the only part of it worth computing once. */
+function computeNormals(rs) {
+    const P = rs.pts, n = P.length;
+    const nx = new Array(n), ny = new Array(n);
     for (let i = 0; i < n; i++) {
         const a = P[Math.max(0, i - 1)], b = P[Math.min(n - 1, i + 1)];
         const dx = b.x - a.x, dy = b.y - a.y;
-        const m = Math.hypot(dx, dy) || 1;
-        nx.push(-dy / m); ny.push(dx / m);
+        const m = Math.sqrt(dx * dx + dy * dy) || 1;
+        nx[i] = -dy / m; ny[i] = dx / m;
     }
+    rs.nx = nx; rs.ny = ny;
+}
+
+/* Outline of a tapered tube around a centreline, stamped into the context.
+   `grow` pushes the wall outward by a fixed amount, which lets the drop shadow
+   and the dark silhouette be *fills* of a slightly larger tube instead of
+   strokes of this one. Filling is far cheaper than stroking a polygon this
+   dense, and it gives the same result. */
+function buildTubePath(ctx, rs, widthOf, halfBW, grow) {
+    const P = rs.pts, ds = rs.ds, n = P.length;
+    const nx = rs.nx, ny = rs.ny;
+    const g = grow || 0;
     ctx.beginPath();
     for (let i = 0; i < n; i++) {
-        const w = widthOf(i * ds) * halfBW;
-        const x = P[i].x + nx[i] * w, y = P[i].y + ny[i] * w;
-        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        const w = widthOf(i * ds) * halfBW + g;
+        if (i === 0) ctx.moveTo(P[i].x + nx[i] * w, P[i].y + ny[i] * w);
+        else ctx.lineTo(P[i].x + nx[i] * w, P[i].y + ny[i] * w);
     }
     for (let i = n - 1; i >= 0; i--) {
-        const w = widthOf(i * ds) * halfBW;
+        const w = widthOf(i * ds) * halfBW + g;
         ctx.lineTo(P[i].x - nx[i] * w, P[i].y - ny[i] * w);
     }
     ctx.closePath();
-    return { nx: nx, ny: ny };
+}
+
+
+/* ==========================================================================
+   LATERAL UNDULATION
+   A real snake does not slide along its track like a train. It throws its body
+   into waves that press sideways against the ground, and the body then flows
+   forward through those waves. The key property is that the wave is stationary
+   in the *ground* frame, not the body frame: each segment follows exactly the
+   path the segment ahead of it took, which is why a snake's track is a single
+   clean sine curve rather than a smear.
+
+   So the lateral offset is a function of ground position, not of position
+   along the body. A point `u` behind the head, when the head has travelled a
+   distance D, sits at ground coordinate (D - u) along the track:
+
+       offset(u) = A(u) * sin(2*pi * (D - u) / lambda)
+
+   The envelope A(u) fades to zero at the snout — a snake's head stays fairly
+   steady while its body does the work — and eases off at the very tail tip.
+   ========================================================================== */
+function undulate(rs, sOffset, total, und) {
+    if (!und || und.amp <= 0) return;
+    const P = rs.pts, n = P.length, ds = rs.ds;
+    if (n < 2) return;
+
+    // Normals are taken from the undisplaced curve, so the wave is measured
+    // against the track rather than against itself.
+    computeNormals(rs);
+    const nx = rs.nx, ny = rs.ny;
+
+    // Where the track already bends hard the snake is spending its flexibility
+    // on the turn, so throwing a wave on top of it just tangles the body into
+    // itself. Measure how much the tangent swings across a short window and
+    // fade the amplitude out accordingly: no effect on a straight run, halved
+    // through a right-angle turn, nearly gone in a hairpin staircase.
+    const W = Math.max(2, Math.round(20 / ds));
+    const tang = new Array(n);
+    for (let i = 0; i < n; i++) tang[i] = Math.atan2(ny[i], nx[i]);
+
+    const k = (Math.PI * 2) / und.lambda;
+    for (let i = 0; i < n; i++) {
+        let turn = tang[Math.min(n - 1, i + W)] - tang[Math.max(0, i - W)];
+        while (turn >  Math.PI) turn -= Math.PI * 2;
+        while (turn < -Math.PI) turn += Math.PI * 2;
+        const slack = clamp(1 - Math.abs(turn) / (Math.PI * 1.1), 0.15, 1);
+
+        const u = sOffset + i * ds;
+        const nose = Math.min(1, u / und.rampHead);
+        const tip  = Math.min(1, Math.max(0, total - u) / und.rampTail);
+        const d = und.amp * nose * tip * slack * Math.sin(k * (und.travelled - u));
+        P[i] = { x: P[i].x + nx[i] * d, y: P[i].y + ny[i] * d };
+    }
 }
 
 /* ==========================================================================
@@ -815,20 +921,27 @@ function buildTubePath(ctx, rs, widthOf, halfBW) {
    ========================================================================== */
 const SLICE_LEN = 8;
 
-function renderSnakeBody(ctx, groups, speciesKey, BW) {
+function renderSnakeBody(ctx, groups, speciesKey, BW, und) {
     const tex = getSkinTexture(speciesKey);
     const TW = tex.width;
+
+    // Spacing scales with the snake's length: fine enough to stay smooth on a
+    // short body, coarse enough that a very long one stays inside frame budget.
+    let cells = 0;
+    for (let i = 0; i < groups.length; i++) if (groups[i]) cells += groups[i].length;
+    const ds = cells > 110 ? 6.5 : cells > 55 ? 5 : cells > 30 ? 3.8 : 2.8;
+    const sliceLen = cells > 55 ? SLICE_LEN * 2 : SLICE_LEN;
 
     const parts = [];
     let total = 0;
     for (let i = 0; i < groups.length; i++) {
         const g = groups[i];
         if (!g || g.length < 2) { parts.push(null); continue; }
-        const rs = resampleUniform(chaikin(g, 4), 2.6);
+        const rs = resampleUniform(chaikin(smoothPath(g, 3, BW * 0.62), 3), ds);
         parts.push(rs);
         total += rs.len;
     }
-    if (total < 4) return;
+    if (total < 4) return null;
 
     const widthOf = makeWidthProfile(total);
     const half = BW * 0.5;
@@ -836,17 +949,24 @@ function renderSnakeBody(ctx, groups, speciesKey, BW) {
     let acc = 0;
     for (let i = 0; i < parts.length; i++) { offs.push(acc); if (parts[i]) acc += parts[i].len; }
 
+    for (let i = 0; i < parts.length; i++) {
+        if (!parts[i]) continue;
+        undulate(parts[i], offs[i], total, und);
+        computeNormals(parts[i]);   // the wave moved the points, so redo them
+    }
+
     const localWidth = i => (s => widthOf(offs[i] + s));
 
     /* --- cast shadow: a stacked-stroke penumbra, cheaper than a real blur --- */
     ctx.save();
     ctx.translate(5, 7);
+    ctx.lineJoin = 'round';
     for (let i = 0; i < parts.length; i++) {
         if (!parts[i]) continue;
-        buildTubePath(ctx, parts[i], localWidth(i), half);
-        ctx.strokeStyle = 'rgba(0,0,0,0.09)'; ctx.lineWidth = 11; ctx.lineJoin = 'round'; ctx.stroke();
-        ctx.strokeStyle = 'rgba(0,0,0,0.13)'; ctx.lineWidth = 5; ctx.stroke();
-        ctx.fillStyle = 'rgba(0,0,0,0.30)'; ctx.fill();
+        buildTubePath(ctx, parts[i], localWidth(i), half, 4.5);
+        ctx.fillStyle = 'rgba(0,0,0,0.14)'; ctx.fill();
+        buildTubePath(ctx, parts[i], localWidth(i), half, 0.5);
+        ctx.fillStyle = 'rgba(0,0,0,0.26)'; ctx.fill();
     }
     ctx.restore();
 
@@ -861,12 +981,12 @@ function renderSnakeBody(ctx, groups, speciesKey, BW) {
         ctx.fill();
 
         ctx.save();
-        buildTubePath(ctx, rs, wOf, half);
         ctx.clip();
 
         const n = rs.pts.length;
-        const phase = Math.round(offs[i] / SLICE_LEN) * SLICE_LEN * TEX_PX;
-        for (let s = 0; s <= rs.len; s += SLICE_LEN) {
+        const SL = sliceLen;
+        const phase = Math.round(offs[i] / SL) * SL * TEX_PX;
+        for (let s = 0; s <= rs.len; s += SL) {
             const idx = Math.min(n - 1, Math.round(s / rs.ds));
             const p = rs.pts[idx];
             const a = rs.pts[Math.min(n - 1, idx + 1)], b = rs.pts[Math.max(0, idx - 1)];
@@ -879,19 +999,20 @@ function renderSnakeBody(ctx, groups, speciesKey, BW) {
             ctx.save();
             ctx.translate(p.x, p.y);
             ctx.rotate(ang);
-            ctx.drawImage(tex, sx, 0, SLICE_LEN * TEX_PX, TEX_H,
-                          -SLICE_LEN * 0.5 - 3.2, -w * 0.51, SLICE_LEN + 6.4, w * 1.02);
+            ctx.drawImage(tex, sx, 0, SL * TEX_PX, TEX_H,
+                          -SL * 0.5 - 3.2, -w * 0.51, SL + 6.4, w * 1.02);
             ctx.restore();
         }
         ctx.restore();
 
-        /* crisp silhouette + ground contact darkening */
-        buildTubePath(ctx, rs, wOf, half);
-        ctx.strokeStyle = 'rgba(0,0,0,0.34)';
-        ctx.lineWidth = 1.5;
-        ctx.lineJoin = 'round';
-        ctx.stroke();
     }
+
+    // Hand back where the head ended up once the wave was applied, and which
+    // way it is pointing, so the skull sits on the curve instead of on the grid.
+    const first = parts[0];
+    if (!first || first.pts.length < 2) return null;
+    const h = first.pts[0], b = first.pts[Math.min(first.pts.length - 1, 4)];
+    return { head: h, angle: Math.atan2(h.y - b.y, h.x - b.x) };
 }
 
 /* ==========================================================================
@@ -1208,15 +1329,21 @@ function renderRattle(ctx, x, y, angle, BW, frame) {
 /* Top-level: body + head + tongue (+ rattle). `groups` is head-first. */
 function renderSnake(ctx, groups, speciesKey, BW, frame, opts) {
     opts = opts || {};
-    renderSnakeBody(ctx, groups, speciesKey, BW);
+    const info = renderSnakeBody(ctx, groups, speciesKey, BW, opts.undulation);
 
     const g0 = groups[0];
     if (!g0 || g0.length < 1) return;
-    const head = g0[0];
-    let angle = opts.headAngle;
-    if (angle === undefined) {
+
+    // Prefer the head the body render reported: it sits on the undulated curve
+    // and its tangent turns smoothly through corners. Fall back to the grid
+    // heading only when the head group is too short to have one (just wrapped).
+    const head = info ? info.head : g0[0];
+    let angle;
+    if (info) angle = info.angle;
+    else if (opts.headAngle !== undefined) angle = opts.headAngle;
+    else {
         const nxt = g0[Math.min(g0.length - 1, 2)];
-        angle = Math.atan2(head.y - nxt.y, head.x - nxt.x);
+        angle = Math.atan2(g0[0].y - nxt.y, g0[0].x - nxt.x);
     }
 
     if (SPECIES[speciesKey].rattle) {
@@ -2576,6 +2703,16 @@ function paintBiome(c, W, biomeIndex) {
     const SWIPE_THRESHOLD = 30;
     const GAPE_DISTANCE = 4;        // tiles within which the jaw starts to open
 
+    /* Lateral undulation. The wavelength is a little under five tiles, which
+       puts two to three waves along a mid-length snake — about what a real
+       colubrid throws. Amplitude is kept under half a tile so the drawn body
+       never strays far enough from the cells it occupies to mislead the
+       player about where it is safe to turn. */
+    const WAVE_LENGTH = TILE * 4.6;
+    const WAVE_AMP    = TILE * 0.40;
+    const WAVE_HEAD   = TILE * 1.35;   // the snout barely sways
+    const WAVE_TAIL   = TILE * 0.90;
+
     /* ---------------- DOM ---------------- */
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas && canvas.getContext('2d');
@@ -2616,6 +2753,8 @@ function paintBiome(c, W, biomeIndex) {
     let currentLevel = 1;
     let gameState = 'start';        // start | playing | paused | gameover
     let frame = 0;
+    let steps = 0;          // whole tiles the head has advanced
+    let idleDrift = 0;      // keeps a resting snake breathing on the menus
     let particles = [];
     let bursts = [];
     let floaters = [];
@@ -2804,9 +2943,24 @@ function paintBiome(c, W, biomeIndex) {
             : 1;
         const groups = snakeGroups(t);
         if (!groups.length) return;
+
+        // Distance the head has covered. While playing this is the real travel
+        // so the wave stays pinned to the ground; on the menus it drifts slowly
+        // so a waiting snake still breathes. Paused, it holds still.
+        const travelled = gameState === 'playing'
+            ? (steps + t) * TILE
+            : idleDrift;
+
         renderSnake(ctx, groups, biome().species, BODY_W, frame, {
             headAngle: Math.atan2(direction.y, direction.x),
-            gape: gape
+            gape: gape,
+            undulation: {
+                amp: WAVE_AMP,
+                lambda: WAVE_LENGTH,
+                travelled: travelled,
+                rampHead: WAVE_HEAD,
+                rampTail: WAVE_TAIL
+            }
         });
     }
 
@@ -3044,6 +3198,7 @@ function paintBiome(c, W, biomeIndex) {
         } else {
             snake.pop();
         }
+        steps++;
         frame++;
     }
 
@@ -3121,7 +3276,9 @@ function paintBiome(c, W, biomeIndex) {
         (function idle(ts) {
             if (gameState === 'playing') { idleId = null; return; }
             if (ts - last >= IDLE_FRAME_MS) {
-                frame++; updateParticles(); draw(); last = ts;
+                frame++;
+                if (gameState !== 'paused') idleDrift += 1.5;
+                updateParticles(); draw(); last = ts;
             }
             idleId = requestAnimationFrame(idle);
         })(0);
@@ -3139,7 +3296,7 @@ function paintBiome(c, W, biomeIndex) {
         score = 0;
         currentLevel = 1;
         gameState = 'playing';
-        frame = 0; lastTime = 0; accumulated = 0;
+        frame = 0; steps = 0; idleDrift = 0; lastTime = 0; accumulated = 0;
         bursts = []; floaters = []; banner = null;
         deathFlash = 0; gape = 0;
 
@@ -3204,6 +3361,7 @@ function paintBiome(c, W, biomeIndex) {
         pending = [];
         food = {};
         banner = null; bursts = []; floaters = []; deathFlash = 0;
+        steps = 0; idleDrift = 0;
         levelEl.textContent = 1;
         scoreEl.textContent = 0;
         showOverlay(startScreen, true);

@@ -16,6 +16,20 @@ are lance-shaped, with cephalic plates, a supraocular ridge, labial scales,
 round or slit pupils by species, heat pits on the vipers and boids, and a
 forked tongue on its own flick cycle.
 
+**It moves like a snake, not a train.** Snakes travel by lateral undulation:
+the body is thrown into waves that press sideways against the ground, and the
+animal then flows forward through those waves. The defining property is that
+the wave is stationary in the *ground* frame — each segment follows exactly the
+path the segment ahead of it took, which is why a snake leaves a single clean
+sine curve as its track. So the lateral offset here is a function of ground
+position rather than of position along the body: a point `u` behind the head,
+with the head having travelled `D`, sits at track coordinate `D - u`. The
+envelope fades to nothing at the snout, and the wave is damped wherever the
+track already bends hard, so a snake threading a tight staircase does not also
+throw a wave on top of it. The grid path is smoothed before it is drawn — with
+a hard cap on how far the drawn body may stray from the cells it actually
+occupies — so turns read as swept arcs rather than square corners.
+
 **Ten places, not ten palettes.** Every biome has its own terrain generator,
 seeded so a level looks the same each time you reach it. The rainforest grows
 ferns, moss beds and mossy fallen logs under canopy light shafts; the dune sea
