@@ -3,12 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Serpent — 150 levels across ten biomes</title>
-<meta name="description" content="Serpent: a snake game with 150 hand-scheduled levels, lethal obstacles, ten procedurally rendered biomes, ten real snake species and six drawn prey animals. One file, no dependencies.">
+<title>Serpent — Battle Royale</title>
+<meta name="description" content="Serpent Battle Royale: a huge shared arena over your local network. Eat to grow, and the bigger snake wins every fight.">
 <meta name="theme-color" content="#12110b">
-<meta property="og:title" content="Serpent — 150 levels across ten biomes">
-<meta property="og:description" content="150 levels, ten biomes, ten snake species. Every pixel drawn by code.">
-<meta property="og:type" content="website">
 <style>
   *{margin:0;padding:0;box-sizing:border-box}
 
@@ -215,116 +212,129 @@
     .quarry{grid-template-columns:1fr}
   }
   @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+  /* ---- battle-only ---- */
+  .field{display:flex;align-items:center;gap:9px;width:100%;max-width:400px;margin-top:8px}
+  .field label{
+    font-family:ui-monospace,Menlo,monospace;font-size:9.5px;letter-spacing:.15em;
+    text-transform:uppercase;color:var(--muted);width:66px;flex:0 0 66px;text-align:left;
+  }
+  .field input{
+    flex:1;min-width:0;background:#14140f;color:var(--ink);border:1px solid var(--rule);
+    padding:9px 10px;font-family:ui-monospace,Menlo,monospace;font-size:12px;
+  }
+  .field input:focus-visible{outline:2px solid var(--brass);outline-offset:1px}
+  .hint{
+    font-family:ui-monospace,Menlo,monospace;font-size:10px;letter-spacing:.06em;
+    color:var(--muted);margin-top:14px;line-height:1.7;text-align:center;max-width:420px;
+  }
+  .hint code{color:var(--brass);background:rgba(214,171,73,.10);padding:1px 5px}
+  #battleStatus{color:var(--brass);text-transform:uppercase;letter-spacing:.16em;font-size:10px}
+  .rules{
+    display:grid;grid-template-columns:1fr 1fr;gap:3px 22px;margin-top:16px;
+    font-size:13px;color:var(--muted);text-align:left;max-width:420px;
+  }
+  .rules > div{
+    display:flex;align-items:baseline;justify-content:space-between;gap:14px;
+    border-bottom:1px dotted rgba(154,145,121,.28);padding-bottom:2px;
+  }
+  .rules span{font-family:ui-monospace,Menlo,monospace;font-size:11px;color:var(--brass-dim)}
 </style>
 </head>
 <body>
-<main class="case" aria-label="Serpent">
+<main class="case" aria-label="Serpent Battle Royale">
 
   <div class="masthead">
     <div class="wordmark">SERPENT<span>.</span></div>
-    <div class="strap">150 levels · ten biomes</div>
+    <div class="strap">Battle Royale</div>
   </div>
 
   <div class="readouts" role="status" aria-live="polite">
     <div class="readout">
-      <span class="k" id="k-score">Score</span>
-      <span class="v" id="score" aria-labelledby="k-score">0</span>
+      <span class="k" id="k-lv">Level</span>
+      <span class="v" id="brHudLevel" aria-labelledby="k-lv">—</span>
     </div>
     <div class="readout">
-      <span class="k" id="k-level">Level</span>
-      <span class="v" aria-labelledby="k-level"><span id="level">1</span><small> / 150</small></span>
+      <span class="k" id="k-len">Length</span>
+      <span class="v" id="brHudLen" aria-labelledby="k-len">—</span>
     </div>
     <div class="readout">
-      <span class="k" id="k-best">Best</span>
-      <span class="v" id="highScore" aria-labelledby="k-best">0</span>
+      <span class="k" id="k-kills">Kills</span>
+      <span class="v" id="brHudKills" aria-labelledby="k-kills">—</span>
     </div>
   </div>
 
   <div class="locale">
     <div class="place">
-      <span id="levelName">First Light</span>
-      <span class="badge" id="openEdge" hidden>Edges open</span>
+      <span id="brArena">The Arena</span>
+      <span class="badge" id="brEdges">Walled — no wrapping</span>
     </div>
-    <div class="who"><span id="biomeName">Wildflower Meadow</span> · <span id="speciesName">Grass Snake</span></div>
+    <div class="who"><span id="brWho">not connected</span></div>
   </div>
-
   <div class="goal">
-    <span>Prey <b id="goalCount">0</b> / <b id="goalNeed">4</b></span>
-    <span class="track"><i id="goalFill"></i></span>
+    <span>Alive <b id="brAlive">0</b></span>
+    <span class="track"><i id="brFill"></i></span>
   </div>
 
   <div class="board">
     <canvas id="gameCanvas" width="700" height="700" tabindex="0"
-            aria-label="Game board. Use the arrow keys to steer the snake."></canvas>
+            aria-label="Battle arena. Use the arrow keys to steer."></canvas>
 
-    <div class="overlay" id="startScreen" role="dialog" aria-labelledby="start-title">
-      <h2 id="start-title">Serpent</h2>
-      <p>150 levels. Ten biomes. Walls kill.</p>
+    <div class="overlay panel show" id="battleScreen" role="dialog" aria-labelledby="br-title">
+      <h2 id="br-title">Battle Royale</h2>
+      <p>One huge arena. Eat to grow. The bigger snake always wins.</p>
       <div class="rule"></div>
-      <p>Eat the level's quota of animals to move on.</p>
-      <div class="quarry">
-        <div>Windfall apple <span>10</span></div>
-        <div>Quail egg <span>15</span></div>
-        <div>Field mouse <span>20</span></div>
-        <div>Marsh frog <span>30</span></div>
-        <div>Sand lizard <span>40</span></div>
-        <div>Young rabbit <span>60</span></div>
+      <div class="field">
+        <label for="brName">Name</label>
+        <input id="brName" maxlength="14" value="Snake" autocomplete="off">
       </div>
-      <div class="picker" id="continueWrap" hidden>
-        <select id="levelPick" aria-label="Choose a level you have reached"></select>
-        <button id="continueBtn" class="primary">Continue</button>
-        <button id="newGameBtn">From level 1</button>
+      <div class="field">
+        <label for="brUrl">Arena</label>
+        <input id="brUrl" value="localhost:8080" autocomplete="off"
+               aria-describedby="brHelp">
       </div>
-      <p class="cue">Press space to begin</p>
-      <p style="margin-top:14px"><a class="modelink" href="battle.html">Battle Royale &rarr;</a></p>
+      <div class="opts" style="margin-top:12px">
+        <div class="opt"><span class="ok" id="lb-brsp">Snake</span>
+          <div class="sw chips" id="brSpecies" role="group" aria-labelledby="lb-brsp"></div></div>
+      </div>
+      <div class="rules">
+        <div>Bigger level wins <span>always</span></div>
+        <div>Equal levels <span>both die</span></div>
+        <div>Shield <span>8s</span></div>
+        <div>Frenzy <span>7s</span></div>
+        <div>Kills drop prey <span>yes</span></div>
+        <div>World <span>400×400</span></div>
+        <div>Big game <span>rare</span></div>
+        <div>A fawn is worth <span>+35</span></div>
+      </div>
+      <div class="picker">
+        <button id="brJoin" class="primary">Join the arena</button>
+        <a class="modelink" href="index.html">Campaign</a>
+      </div>
+      <p class="hint" id="brHelp">
+        Start the arena on one machine with <code>node server.js</code>, then everyone
+        opens the address it prints. <span id="battleStatus"></span>
+      </p>
     </div>
 
-    <div class="overlay" id="gameOverScreen" role="dialog" aria-labelledby="over-title">
-      <h2 id="over-title">Caught out</h2>
+    <div class="overlay" id="battleDeath" role="dialog" aria-labelledby="brd-title">
+      <h2 id="brd-title">Eaten</h2>
       <div class="rule"></div>
-      <p id="finalLevelName">—</p>
-      <p>Level <b id="finalLevel">1</b> · score <b id="finalScore">0</b></p>
+      <p id="brCause">—</p>
+      <p>Level <b id="brLevel">1</b> · <b id="brScore">0</b> points · <b id="brKills">0</b> kills</p>
       <div class="picker">
-        <button id="retryBtn" class="primary">Retry level</button>
+        <button id="brRespawn" class="primary">Back in</button>
+        <button id="brQuit">Leave arena</button>
       </div>
-      <p class="cue">Press space to retry</p>
+      <p class="cue">Press space to dive back in</p>
     </div>
   </div>
 
-    <div class="overlay panel" id="customScreen" role="dialog" aria-labelledby="cust-title">
-      <h2 id="cust-title">Your snake</h2>
-      <canvas id="skinPreview" width="800" height="240" role="img"
-              aria-label="Preview of your snake design"></canvas>
-      <div class="opts">
-        <div class="opt"><span class="ok" id="lb-sp">Real snake</span>
-          <div class="sw chips" id="swSpecies" role="group" aria-labelledby="lb-sp"></div></div>
-        <div class="opt" style="height:1px;background:var(--rule);margin:2px 0"></div>
-        <div class="opt"><span class="ok" id="lb-base">Base</span>
-          <div class="sw" id="swBase" role="group" aria-labelledby="lb-base"></div></div>
-        <div class="opt"><span class="ok" id="lb-mark">Markings</span>
-          <div class="sw" id="swMark" role="group" aria-labelledby="lb-mark"></div></div>
-        <div class="opt"><span class="ok" id="lb-pat">Pattern</span>
-          <div class="sw chips" id="swPattern" role="group" aria-labelledby="lb-pat"></div></div>
-        <div class="opt"><span class="ok" id="lb-eye">Eyes</span>
-          <div class="sw" id="swEye" role="group" aria-labelledby="lb-eye"></div></div>
-        <div class="opt"><span class="ok" id="lb-pup">Pupil</span>
-          <div class="sw chips" id="swPupil" role="group" aria-labelledby="lb-pup"></div></div>
-      </div>
-      <p class="wearing">Playing as <b id="wearing">the wild species</b></p>
-      <div class="picker">
-        <button id="useCustomBtn">Use my snake</button>
-        <button id="useWildBtn">Use a real species</button>
-        <button id="closeCustomBtn" class="primary">Done</button>
-      </div>
-    </div>
-
   <div class="foot">
-    <div class="keys"><b>Arrows</b> or <b>WASD</b> steer &nbsp;·&nbsp; <b>Space</b> starts and pauses</div>
+    <div class="keys"><b>Arrows</b> or <b>WASD</b> steer &nbsp;·&nbsp; grab <b>S</b> shields and <b>F</b> frenzy</div>
     <div class="btns">
-      <button id="startBtn" class="primary" aria-label="Start or retry">Start</button>
-      <button id="pauseBtn" aria-label="Pause or resume game">Pause</button>
-      <button id="snakeBtn" aria-label="Customise your snake">Snake</button>
-      <button id="restartBtn" aria-label="Back to the menu">Menu</button>
+      <button id="brRejoin" class="primary" aria-label="Join or rejoin the arena">Join</button>
+      <a class="modelink" href="index.html" style="align-self:center">Campaign</a>
     </div>
   </div>
 
@@ -3810,1636 +3820,653 @@ function setCustomSkin(cfg) {
 
 
 /* ==========================================================================
-   LEVELS
-   A level is a blocked-cell grid plus a goal. Layouts come from a library of
-   seeded shape generators rather than 150 hand-drawn maps: a generator plus
-   its parameters and seed is a reproducible composition, and the schedule at
-   the bottom picks a deliberate one for every level so difficulty and terrain
-   ramp instead of wandering.
-   ========================================================================== */
-const N = 25;                       // grid is N x N cells
-
-function Grid() {
-    this.b = new Uint8Array(N * N);
-}
-Grid.prototype = {
-    at:  function (x, y) { return (x < 0 || y < 0 || x >= N || y >= N) ? 1 : this.b[y * N + x]; },
-    set: function (x, y) { if (x >= 0 && y >= 0 && x < N && y < N) this.b[y * N + x] = 1; },
-    clr: function (x, y) { if (x >= 0 && y >= 0 && x < N && y < N) this.b[y * N + x] = 0; },
-
-    rect: function (x, y, w, h) {
-        for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) this.set(x + i, y + j);
-        return this;
-    },
-    clear: function (x, y, w, h) {
-        for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) this.clr(x + i, y + j);
-        return this;
-    },
-    hline: function (y, x0, x1, t) {
-        t = t || 1;
-        for (let k = 0; k < t; k++) for (let x = x0; x <= x1; x++) this.set(x, y + k);
-        return this;
-    },
-    vline: function (x, y0, y1, t) {
-        t = t || 1;
-        for (let k = 0; k < t; k++) for (let y = y0; y <= y1; y++) this.set(x + k, y);
-        return this;
-    },
-    box: function (x, y, w, h, t) {           // hollow rectangle
-        t = t || 1;
-        this.hline(y, x, x + w - 1, t);
-        this.hline(y + h - t, x, x + w - 1, t);
-        this.vline(x, y, y + h - 1, t);
-        this.vline(x + w - t, y, y + h - 1, t);
-        return this;
-    },
-    border: function (t) { return this.box(0, 0, N, N, t || 1); },
-
-    /* Mirror what has been drawn so far, so a layout reads as designed rather
-       than sprinkled. */
-    mirrorX: function () {
-        for (let y = 0; y < N; y++) for (let x = 0; x < N; x++)
-            if (this.b[y * N + x]) this.set(N - 1 - x, y);
-        return this;
-    },
-    mirrorY: function () {
-        for (let y = 0; y < N; y++) for (let x = 0; x < N; x++)
-            if (this.b[y * N + x]) this.set(x, N - 1 - y);
-        return this;
-    },
-    rot4: function () {                        // 4-fold rotational symmetry
-        const src = this.b.slice();
-        for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
-            if (!src[y * N + x]) continue;
-            this.set(N - 1 - y, x);
-            this.set(N - 1 - x, N - 1 - y);
-            this.set(y, N - 1 - x);
-        }
-        return this;
-    }
-};
-
-/* ---- the shape library. Each takes (g, rng, p). ---- */
-const PATTERNS = {
-
-open: function () { /* nothing but the arena */ },
-
-pillars: function (g, rng, p) {
-    const step = p.step || 4, sz = p.size || 1, off = p.off || 3;
-    for (let y = off; y < N - off + 1; y += step)
-        for (let x = off; x < N - off + 1; x += step)
-            g.rect(x, y, sz, sz);
-},
-
-bars: function (g, rng, p) {
-    // Short oriented bars scattered with breathing room, the classic arcade look.
-    const count = p.count || 14, len = p.len || 4;
-    const placed = [];
-    let tries = 0;
-    while (placed.length < count && tries++ < 500) {
-        const vert = rng() < 0.5;
-        const L = len + ((rng() * 2) | 0);
-        const x = 2 + ((rng() * (N - 4 - (vert ? 1 : L))) | 0);
-        const y = 2 + ((rng() * (N - 4 - (vert ? L : 1))) | 0);
-        let ok = true;
-        for (const q of placed)
-            if (Math.abs(q.x - x) < 3 && Math.abs(q.y - y) < 3) { ok = false; break; }
-        if (!ok) continue;
-        placed.push({ x: x, y: y });
-        if (vert) g.vline(x, y, y + L - 1); else g.hline(y, x, x + L - 1);
-    }
-},
-
-lanes: function (g, rng, p) {
-    // Vertical walls with a staggered gate in each.
-    const step = p.step || 4, gap = p.gap || 3;
-    for (let x = step, k = 0; x < N - 1; x += step, k++) {
-        const gy = 2 + ((k % 2 === 0) ? 3 : N - 8) + ((rng() * 3) | 0);
-        g.vline(x, 1, N - 2);
-        g.clear(x, Math.max(1, gy), 1, gap);
-    }
-},
-
-corridors: function (g, rng, p) {
-    const step = p.step || 4, gap = p.gap || 3;
-    for (let y = step, k = 0; y < N - 1; y += step, k++) {
-        const gx = 2 + ((k % 2 === 0) ? 3 : N - 8) + ((rng() * 3) | 0);
-        g.hline(y, 1, N - 2);
-        g.clear(Math.max(1, gx), y, gap, 1);
-    }
-},
-
-spiral: function (g, rng, p) {
-    const gap = p.gap || 3;
-    let x0 = 2, y0 = 2, x1 = N - 3, y1 = N - 3;
-    let guard = 0;
-    while (x1 - x0 > 2 && y1 - y0 > 2 && guard++ < 12) {
-        g.hline(y0, x0, x1);
-        g.vline(x1, y0, y1);
-        g.hline(y1, x0 + gap, x1);
-        g.vline(x0, y0 + gap, y1);
-        g.clear(x0, y0 + gap - 1, 1, 1);
-        x0 += gap; y0 += gap; x1 -= gap; y1 -= gap;
-    }
-},
-
-rings: function (g, rng, p) {
-    const step = p.step || 4;
-    for (let r = step; r < N / 2 - 1; r += step) {
-        g.box(r, r, N - r * 2, N - r * 2, 1);
-        // a doorway on each side, rotated per ring so the route is not straight
-        const m = (N / 2) | 0, o = ((r / step) | 0) % 4;
-        const doors = [[m, r], [N - 1 - r, m], [m, N - 1 - r], [r, m]];
-        for (let i = 0; i < 4; i++) {
-            if (i === o) continue;
-            g.clear(doors[i][0] - 1, doors[i][1] - 1, 3, 3);
-        }
-    }
-},
-
-cross: function (g, rng, p) {
-    const t = p.thick || 3, m = ((N - t) / 2) | 0, arm = p.arm || 8;
-    g.rect(m, 1, t, arm);
-    g.rect(m, N - 1 - arm, t, arm);
-    g.rect(1, m, arm, t);
-    g.rect(N - 1 - arm, m, arm, t);
-},
-
-diamond: function (g, rng, p) {
-    const r = p.r || 8, c = (N / 2) | 0;
-    for (let i = 0; i <= r; i++) {
-        g.set(c - r + i, c - i); g.set(c + r - i, c - i);
-        g.set(c - r + i, c + i); g.set(c + r - i, c + i);
-    }
-    g.clear(c - 1, c - r, 3, 1);
-    g.clear(c - 1, c + r, 3, 1);
-},
-
-rooms: function (g, rng, p) {
-    const cells = p.cells || 3;
-    const s = Math.floor((N - 1) / cells);
-    for (let i = 1; i < cells; i++) {
-        g.vline(i * s, 1, N - 2);
-        g.hline(i * s, 1, N - 2);
-    }
-    // punch a door in every wall segment
-    for (let i = 1; i < cells; i++)
-        for (let j = 0; j < cells; j++) {
-            const c = j * s + ((s / 2) | 0);
-            g.clear(i * s, c - 1, 1, 3);
-            g.clear(c - 1, i * s, 3, 1);
-        }
-},
-
-comb: function (g, rng, p) {
-    const step = p.step || 3, len = p.len || 9;
-    for (let x = step, k = 0; x < N - 1; x += step, k++)
-        if (k % 2 === 0) g.vline(x, 1, len);
-        else g.vline(x, N - 2 - len, N - 2);
-},
-
-checker: function (g, rng, p) {
-    const s = p.size || 3, step = s * 2;
-    for (let y = 2; y < N - s; y += step)
-        for (let x = 2; x < N - s; x += step)
-            g.rect(x + ((y / step | 0) % 2) * s, y, s, s);
-},
-
-zigzag: function (g, rng, p) {
-    const step = p.step || 5, len = p.len || 14;
-    for (let y = step, k = 0; y < N - 2; y += step, k++) {
-        const x0 = (k % 2 === 0) ? 1 : N - 1 - len;
-        g.hline(y, x0, x0 + len - 1);
-    }
-},
-
-hourglass: function (g, rng, p) {
-    const c = (N / 2) | 0, w = p.w || 2;
-    for (let i = 0; i < c - 1; i++) {
-        if (i % 4 === 1) continue;          // gate, or the X seals off all four quadrants
-        g.rect(1 + i, 1 + i, w, 1);
-        g.rect(N - 1 - i - w, 1 + i, w, 1);
-        g.rect(1 + i, N - 2 - i, w, 1);
-        g.rect(N - 1 - i - w, N - 2 - i, w, 1);
-    }
-},
-
-islands: function (g, rng, p) {
-    const n = p.count || 7, r = p.r || 2;
-    for (let i = 0; i < n; i++) {
-        const cx = 3 + ((rng() * (N - 6)) | 0), cy = 3 + ((rng() * (N - 6)) | 0);
-        for (let y = -r; y <= r; y++) for (let x = -r; x <= r; x++)
-            if (x * x + y * y <= r * r + (rng() < 0.4 ? 1 : 0)) g.set(cx + x, cy + y);
-    }
-},
-
-lattice: function (g, rng, p) {
-    const step = p.step || 4;
-    for (let x = step; x < N - 1; x += step) g.vline(x, 1, N - 2);
-    for (let y = step; y < N - 1; y += step) g.hline(y, 1, N - 2);
-    // Gate the middle of every wall segment. Opening only the junctions (which
-    // is what this did before) leaves most of the lattice sealed, and the whole
-    // interior then gets walled off as unreachable.
-    const half = Math.max(1, (step / 2) | 0);
-    for (let x = step; x < N - 1; x += step)
-        for (let y = 0; y < N; y += step) g.clear(x, y + half, 1, 1);
-    for (let y = step; y < N - 1; y += step)
-        for (let x = 0; x < N; x += step) g.clear(x + half, y, 1, 1);
-},
-
-chevrons: function (g, rng, p) {
-    const step = p.step || 5, w = p.w || 7;
-    for (let y = 3, k = 0; y < N - 2; y += step, k++) {
-        const cx = ((N / 2) | 0) + ((k % 2) ? 4 : -4);
-        for (let i = 0; i <= w; i++) {
-            // stop the arm at the floor rather than clamping onto it: clamping
-            // piled every overflow cell onto the bottom row, which walled off
-            // the whole bottom strip and left a solid mass once it was sealed
-            const yy = y + i;
-            if (yy > N - 2) break;
-            if (i % 3 === 2) continue;      // gate, or stacked Vs mesh into a closed lattice
-            g.set(cx - i, yy);
-            g.set(cx + i, yy);
-        }
-    }
-},
-
-pinwheel: function (g, rng, p) {
-    const arm = p.arm || 8, c = (N / 2) | 0;
-    g.hline(c, c, c + arm);
-    g.vline(c + arm, c - 3, c);
-    g.rot4();
-},
-
-waves: function (g, rng, p) {
-    const rows = p.rows || 3, amp = p.amp || 3;
-    for (let k = 1; k <= rows; k++) {
-        const base = Math.round((N * k) / (rows + 1));
-        for (let x = 1; x < N - 1; x++) {
-            const y = base + Math.round(Math.sin(x * 0.5 + k) * amp);
-            if (x % 7 !== 3) g.set(x, y);       // periodic gaps to pass through
-        }
-    }
-},
-
-frames: function (g, rng, p) {
-    g.box(2, 2, N - 4, N - 4, 1);
-    g.box(7, 7, N - 14, N - 14, 1);
-    const c = (N / 2) | 0;
-    g.clear(c - 1, 2, 3, 1); g.clear(c - 1, N - 3, 3, 1);
-    g.clear(2, c - 1, 1, 3); g.clear(N - 3, c - 1, 1, 3);
-    g.clear(c - 1, 7, 3, 1); g.clear(7, c - 1, 1, 3);
-},
-
-slalom: function (g, rng, p) {
-    const step = p.step || 3, len = p.len || 15;
-    for (let y = 2, k = 0; y < N - 2; y += step, k++)
-        if (k % 2 === 0) g.hline(y, 1, len);
-        else g.hline(y, N - 1 - len, N - 2);
-},
-
-vault: function (g, rng, p) {
-    const bays = p.bays || 3, s = Math.floor(N / bays);
-    for (let b = 0; b < bays; b++) {
-        const x = b * s + 2, w = s - 4;
-        if (w < 3) continue;
-        g.hline(4, x, x + w - 1);
-        g.hline(N - 5, x, x + w - 1);
-        g.vline(x, 4, 8);
-        g.vline(x + w - 1, N - 9, N - 5);
-    }
-},
-
-teeth: function (g, rng, p) {
-    const step = p.step || 3, len = p.len || 8;
-    for (let x = 2, k = 0; x < N - 2; x += step, k++) {
-        if (k % 2 === 0) g.vline(x, 1, len);
-        else g.vline(x, N - 1 - len, N - 2);
-    }
-    for (let y = 2, k = 0; y < N - 2; y += step * 2, k++)
-        g.hline(y, ((N / 2) | 0) - 2, ((N / 2) | 0) + 2);
-},
-
-scatter: function (g, rng, p) {
-    const n = p.count || 26;
-    for (let i = 0; i < n; i++) {
-        const w = 1 + ((rng() * 2) | 0), h = 1 + ((rng() * 2) | 0);
-        g.rect(2 + ((rng() * (N - 5)) | 0), 2 + ((rng() * (N - 5)) | 0), w, h);
-    }
-},
-
-diagonals: function (g, rng, p) {
-    const step = p.step || 6;
-    for (let o = -N; o < N * 2; o += step)
-        for (let i = 0; i < N; i++) {
-            const x = i, y = i + o;
-            if (i % 6 !== 2) g.set(x, y);
-        }
-},
-
-star: function (g, rng, p) {
-    const c = (N / 2) | 0, arms = p.arms || 6, r = p.r || 10;
-    for (let a = 0; a < arms; a++) {
-        const ang = (a / arms) * Math.PI * 2;
-        for (let i = 3; i <= r; i++) {
-            if (i % 4 === 2) continue;      // gate each spoke so the wedges connect
-            g.set(c + Math.round(Math.cos(ang) * i), c + Math.round(Math.sin(ang) * i));
-        }
-    }
-},
-
-serpentine: function (g, rng, p) {
-    // One long winding corridor: walls run almost the full width, alternating.
-    const step = p.step || 4;
-    for (let y = step, k = 0; y < N - 2; y += step, k++) {
-        if (k % 2 === 0) g.hline(y, 1, N - 5);
-        else g.hline(y, 4, N - 2);
-    }
-},
-
-quadrants: function (g, rng, p) {
-    const c = (N / 2) | 0;
-    g.vline(c, 1, N - 2);
-    g.hline(c, 1, N - 2);
-    g.clear(c - 1, c - 1, 3, 3);                 // central hub
-    const d = p.door || 5;
-    g.clear(c, d, 1, 3); g.clear(c, N - 1 - d - 2, 1, 3);
-    g.clear(d, c, 3, 1); g.clear(N - 1 - d - 2, c, 3, 1);
-},
-
-maze: function (g, rng, p) {
-    // Recursive division on a coarse lattice, so corridors stay 2 cells wide.
-    const min = p.min || 6;
-    (function divide(x, y, w, h, horiz) {
-        if (w < min || h < min) return;
-        if (horiz) {
-            const wy = y + 2 + 2 * ((rng() * ((h - 4) / 2)) | 0);
-            const dx = x + 2 * ((rng() * (w / 2)) | 0);
-            for (let i = x; i < x + w; i++) if (i < dx || i > dx + 1) g.set(i, wy);
-            divide(x, y, w, wy - y, !horiz);
-            divide(x, wy + 1, w, y + h - wy - 1, !horiz);
-        } else {
-            const wx = x + 2 + 2 * ((rng() * ((w - 4) / 2)) | 0);
-            const dy = y + 2 * ((rng() * (h / 2)) | 0);
-            for (let i = y; i < y + h; i++) if (i < dy || i > dy + 1) g.set(wx, i);
-            divide(x, y, wx - x, h, !horiz);
-            divide(wx + 1, y, x + w - wx - 1, h, !horiz);
-        }
-    })(1, 1, N - 2, N - 2, rng() < 0.5);
-},
-
-gridRooms: function (g, rng, p) {
-    const s = p.s || 6;
-    for (let x = s; x < N - 1; x += s) g.vline(x, 1, N - 2);
-    for (let y = s; y < N - 1; y += s) g.hline(y, 1, N - 2);
-    for (let x = s; x < N - 1; x += s)
-        for (let y = 2; y < N - 2; y += s) g.clear(x, y + ((rng() * 3) | 0), 1, 2);
-    for (let y = s; y < N - 1; y += s)
-        for (let x = 2; x < N - 2; x += s) g.clear(x + ((rng() * 3) | 0), y, 2, 1);
-},
-
-arrows: function (g, rng, p) {
-    const step = p.step || 6, w = p.w || 5;
-    for (let y = 3, k = 0; y < N - 3; y += step, k++) {
-        const cx = 4 + (k % 3) * 7;
-        for (let i = 0; i <= w; i++) { g.set(cx + i, y - i + w); g.set(cx + i, y + i - w); }
-    }
-},
-
-funnel: function (g, rng, p) {
-    const c = (N / 2) | 0;
-    for (let i = 0; i < c - 2; i++) {
-        g.set(2 + i, 2 + Math.floor(i * 0.7));
-        g.set(N - 3 - i, 2 + Math.floor(i * 0.7));
-    }
-    g.mirrorY();
-    g.clear(c - 2, c - 2, 5, 5);
-},
-
-blocksHeavy: function (g, rng, p) {
-    const step = p.step || 5, sz = p.size || 3;
-    for (let y = 2; y < N - sz; y += step)
-        for (let x = 2; x < N - sz; x += step)
-            if (!(x === 2 && y === 2)) g.rect(x, y, sz, sz);
-}
-};
-
-/* ==========================================================================
-   THE SCHEDULE
-   150 levels: [pattern, params, name]. Fifteen per biome. Patterns recur with
-   different parameters and seeds so a shape you met in the meadow reads
-   differently once it is basalt. `wrap` marks the handful of borderless
-   levels where the edges stay open.
-   ========================================================================== */
-const SCHEDULE = [
-/* --- I. Wildflower Meadow --- */
-['open',{}, 'First Light', 1], ['pillars',{step:6},'Fence Posts'], ['bars',{count:8,len:3},'Fallen Branches'],
-['corridors',{step:6,gap:4},'Hedgerows'], ['pillars',{step:4},'Orchard Rows'], ['lanes',{step:6,gap:4},'Cattle Runs'],
-['islands',{count:5,r:2},'Molehills'], ['bars',{count:12,len:4},'Windfall'], ['checker',{size:3},'Ploughed Squares'],
-['cross',{thick:3,arm:7},'The Crossroads'], ['comb',{step:4,len:8},'Hay Rakes'], ['rooms',{cells:2},'Two Paddocks'],
-['waves',{rows:2,amp:3},'Furrows'], ['scatter',{count:18},'Stone Clearance'], ['rings',{step:6},'The Old Ring'],
-/* --- II. Rainforest Floor --- */
-['lanes',{step:5,gap:4},'Buttress Roots'], ['islands',{count:7,r:2},'Termite Mounds'], ['bars',{count:14,len:4},'Deadfall'],
-['diagonals',{step:7},'Liana Fall'], ['rooms',{cells:3},'Canopy Chambers'], ['comb',{step:3,len:9},'Root Buttresses'],
-['spiral',{gap:4},'The Strangler'], ['scatter',{count:24},'Leaf Litter'], ['zigzag',{step:5,len:14},'Switchback Trail'],
-['pillars',{step:3},'Sapling Stand', 1], ['chevrons',{step:5,w:6},'Fern Ranks'], ['lattice',{step:5},'Vine Lattice'],
-['islands',{count:9,r:2},'Bromeliad Pools'], ['maze',{min:8},'Undergrowth'], ['frames',{},'The Clearing'],
-/* --- III. Dune Sea --- */
-['waves',{rows:3,amp:3},'Ripples'], ['bars',{count:16,len:5},'Bleached Bones'], ['hourglass',{w:2},'The Narrows'],
-['funnel',{},'Sand Funnel'], ['diagonals',{step:6},'Slipface', 1], ['lanes',{step:4,gap:3},'Dune Corridors'],
-['scatter',{count:28},'Scree'], ['diamond',{r:8},'The Caldera'], ['star',{arms:6,r:10},'Sunwheel'],
-['serpentine',{step:5},'Wadi'], ['pillars',{step:4,size:2},'Mesa Stumps'], ['rings',{step:5},'Salt Rings'],
-['teeth',{step:3,len:7},'Rock Teeth'], ['maze',{min:7},'The Lost Quarter'], ['blocksHeavy',{step:6,size:3},'The Boneyard'],
-/* --- IV. Autumn Woodland --- */
-['islands',{count:8,r:2},'Bramble Clumps'], ['corridors',{step:4,gap:3},'Beech Rows'], ['zigzag',{step:4,len:15},'Deer Path'],
-['arrows',{step:6,w:5},'Flightlines'], ['rooms',{cells:3},'Coppice Blocks'], ['bars',{count:18,len:4},'Windthrow'],
-['chevrons',{step:4,w:7},'Fallen Ranks'], ['lattice',{step:4},'Bramble Net'], ['spiral',{gap:3},'Fairy Ring'],
-['comb',{step:3,len:10},'Palisade'], ['scatter',{count:30},'Acorn Fall', 1], ['quadrants',{door:5},'Four Rides'],
-['vault',{bays:3},'The Old Kilns'], ['gridRooms',{s:6},'Charcoal Pits'], ['maze',{min:6},'The Thicket'],
-/* --- V. Frozen Taiga --- */
-['lanes',{step:4,gap:3},'Ice Leads'], ['waves',{rows:3,amp:4},'Sastrugi', 1], ['pillars',{step:3,size:2},'Ice Pillars'],
-['diagonals',{step:5},'Crevasse Field'], ['hourglass',{w:2},'The Pinch'], ['slalom',{step:3,len:15},'Slalom'],
-['islands',{count:10,r:2},'Hummocks'], ['teeth',{step:3,len:8},'Pressure Ridge'], ['checker',{size:2},'Pack Ice'],
-['frames',{},'Frozen Frames'], ['serpentine',{step:4},'Glacier Run'], ['star',{arms:8,r:10},'Frost Star'],
-['blocksHeavy',{step:5,size:3},'Icefall'], ['maze',{min:6},'Whiteout'], ['lattice',{step:3},'The Lattice'],
-/* --- VI. Cypress Bayou --- */
-['islands',{count:11,r:2},'Cypress Knees'], ['bars',{count:20,len:4},'Driftwood'], ['corridors',{step:3,gap:3},'Channels'],
-['waves',{rows:4,amp:3},'Backwater'], ['scatter',{count:34},'Sunken Logs'], ['zigzag',{step:4,len:16},'Oxbow'],
-['rooms',{cells:4},'Fish Traps'], ['lanes',{step:3,gap:3},'Narrow Bayous'], ['chevrons',{step:4,w:8},'Reed Beds'],
-['spiral',{gap:3},'The Whirl'], ['pinwheel',{arm:8},'Millrace'], ['teeth',{step:3,len:9},'Gator Teeth'],
-['gridRooms',{s:5},'Crawfish Pens'], ['maze',{min:6},'The Sunken Maze'], ['blocksHeavy',{step:5,size:3},'Stilt Village'],
-/* --- VII. Golden Savanna --- */
-['pillars',{step:4,size:2},'Termite Cathedrals'], ['diagonals',{step:5},'Game Trails'], ['bars',{count:22,len:5},'Deadwood'],
-['serpentine',{step:4},'The Dry River'], ['arrows',{step:5,w:5},'Migration', 1], ['lattice',{step:3},'Acacia Scrub'],
-['rings',{step:4},'The Kraal'], ['slalom',{step:3,len:16},'Herd Run'], ['hourglass',{w:3},'The Funnel'],
-['star',{arms:8,r:11},'Sunburst'], ['quadrants',{door:4},'Four Waterholes'], ['checker',{size:2},'Burnt Blocks'],
-['vault',{bays:4},'Rock Shelters'], ['maze',{min:6},'Thornscrub'], ['blocksHeavy',{step:5,size:3},'Boulder Field'],
-/* --- VIII. Ember Ashlands --- */
-['diagonals',{step:4},'Lava Tubes'], ['islands',{count:12,r:2},'Spatter Cones'], ['teeth',{step:3,len:9},'Basalt Teeth'],
-['waves',{rows:4,amp:4},'Flow Fronts'], ['scatter',{count:38},'Clinker'], ['comb',{step:3,len:11},'Fissures'],
-['lanes',{step:3,gap:2},'The Vents'], ['chevrons',{step:6,w:6},'Ash Ranks', 1], ['pinwheel',{arm:9},'Caldera Wheel'],
-['spiral',{gap:3},'Descent'], ['lattice',{step:3},'Cooling Cracks'], ['gridRooms',{s:5},'Furnace Cells'],
-['frames',{},'Obsidian Frames'], ['maze',{min:6},'The Burn'], ['blocksHeavy',{step:4,size:3},'Basalt Colonnade'],
-/* --- IX. Bioluminescent Cavern --- */
-['islands',{count:13,r:2},'Stalagmites'], ['lanes',{step:3,gap:2},'Fissure Runs'], ['diagonals',{step:4},'Fault Lines'],
-['star',{arms:10,r:11},'Crystal Star'], ['teeth',{step:2,len:10},'Cave Teeth'], ['rings',{step:4},'Flowstone Rings'],
-['serpentine',{step:3},'The Long Crawl'], ['slalom',{step:2,len:17},'The Squeeze'], ['checker',{size:2},'Crystal Cells'],
-['quadrants',{door:4},'Four Galleries'], ['pinwheel',{arm:9},'Glow Wheel', 1], ['gridRooms',{s:5},'Bat Roosts'],
-['lattice',{step:3},'Crystal Lattice'], ['maze',{min:6},'The Deep Maze'], ['blocksHeavy',{step:4,size:3},'Column Hall'],
-/* --- X. The Abyss --- */
-['scatter',{count:40},'Debris Field'], ['diagonals',{step:4},'Event Lines', 1], ['star',{arms:12,r:11},'Collapsar'],
-['rings',{step:3},'Accretion Rings'], ['spiral',{gap:3},'The Descent'], ['pinwheel',{arm:10},'Singularity'],
-['lattice',{step:2},'The Grid'], ['teeth',{step:2,len:11},'The Jaws'], ['hourglass',{w:3},'The Throat'],
-['serpentine',{step:3},'The Coil'], ['frames',{},'Nested Voids'], ['checker',{size:2},'Null Cells'],
-['gridRooms',{s:4},'The Cells'], ['maze',{min:6},'The Labyrinth'], ['blocksHeavy',{step:4,size:3},'The Last Wall']
-];
-
-const LEVEL_COUNT = SCHEDULE.length;
-
-function levelMeta(n) {
-    const s = SCHEDULE[n - 1];
-    return {
-        n: n,
-        name: s[2],
-        pattern: s[0],
-        params: s[1],
-        wrap: !!s[3],
-        biome: Math.min(BIOMES.length - 1, Math.floor((n - 1) / 15)),
-        goal: 4 + Math.floor((n - 1) / 6.5),          // 4 animals up to 26
-        speed: Math.max(55, Math.round(150 - (n - 1) * 0.62))
-    };
-}
-
-/* ---- assembly ---------------------------------------------------------- */
-
-/* Reachability from the snake's head. Anything the snake can never get to is
-   turned into wall, which means food can only ever spawn somewhere reachable —
-   no unwinnable level because an animal appeared inside a sealed pocket. */
-function sealPockets(g, sx, sy) {
-    const seen = new Uint8Array(N * N);
-    const queue = [sy * N + sx];
-    seen[sy * N + sx] = 1;
-    let open = 1;
-    for (let h = 0; h < queue.length; h++) {
-        const c = queue[h], x = c % N, y = (c / N) | 0;
-        const nb = [[x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]];
-        for (let i = 0; i < 4; i++) {
-            const a = nb[i][0], b = nb[i][1];
-            if (a < 0 || b < 0 || a >= N || b >= N) continue;
-            const k = b * N + a;
-            if (seen[k] || g.b[k]) continue;
-            seen[k] = 1; open++; queue.push(k);
-        }
-    }
-    for (let i = 0; i < N * N; i++) if (!g.b[i] && !seen[i]) g.b[i] = 1;
-    return open;
-}
-
-/* Pick where the snake starts. The old version took the first run that was
-   merely long enough, which on a spiral or a maze could drop the player three
-   cells from a wall — a third of a second to react. This takes the *longest*
-   straight run on the board (tie-broken toward the middle) and seats the snake
-   at one end of it, so the runway ahead is as long as the level allows. */
-function findStart(g, len) {
-    const mid = (N - 1) / 2;
-    let best = null;
-
-    function consider(line, dir) {
-        let run = [];
-        for (let i = 0; i <= line.length; i++) {
-            const c = line[i];
-            if (c && !g.at(c.x, c.y)) { run.push(c); continue; }
-            if (run.length >= len + 2) {
-                const head = run[len - 1];
-                const central = Math.abs(head.x - mid) + Math.abs(head.y - mid);
-                const score = run.length * 100 - central;
-                if (!best || score > best.score)
-                    best = { score: score, head: head, dir: dir, runway: run.length - len };
-            }
-            run = [];
-        }
-    }
-
-    for (let y = 0; y < N; y++) {
-        const row = [];
-        for (let x = 0; x < N; x++) row.push({ x: x, y: y });
-        consider(row, { x: 1, y: 0 });
-        consider(row.slice().reverse(), { x: -1, y: 0 });
-    }
-    for (let x = 0; x < N; x++) {
-        const col = [];
-        for (let y = 0; y < N; y++) col.push({ x: x, y: y });
-        consider(col, { x: 0, y: 1 });
-        consider(col.slice().reverse(), { x: 0, y: -1 });
-    }
-    return best;
-}
-
-const levelCache = {};
-
-function buildLevel(n) {
-    if (levelCache[n]) return levelCache[n];
-    const meta = levelMeta(n);
-    const g = new Grid();
-    const rng = makeRng(20000 + n * 7919);
-
-    if (!meta.wrap) g.border(1);
-    (PATTERNS[meta.pattern] || PATTERNS.open)(g, rng, meta.params);
-
-    const LEN = 5;
-    let s = findStart(g, LEN);
-    if (!s) {                                       // carve a lane rather than fail
-        const y = (N / 2) | 0;
-        g.clear(1, y - 1, N - 2, 3);
-        s = { head: { x: 9, y: y }, dir: { x: 1, y: 0 }, runway: N - 11 };
-    }
-
-    // Lay the snake out behind the head and clear the cells it occupies.
-    const body = [];
-    for (let i = 0; i < LEN; i++) {
-        const c = { x: s.head.x - s.dir.x * i, y: s.head.y - s.dir.y * i };
-        g.clr(c.x, c.y);
-        body.push(c);
-    }
-    // The run was already clear ahead of the head; widen it a touch if the
-    // level happened to be tight, so nobody starts with under four cells.
-    for (let i = 1; i <= 4; i++) g.clr(s.head.x + s.dir.x * i, s.head.y + s.dir.y * i);
-
-    const openCells = sealPockets(g, s.head.x, s.head.y);
-
-    const lvl = {
-        meta: meta, blocked: g.b, start: body, dir: s.dir,
-        runway: s.runway, open: openCells, biome: meta.biome
-    };
-    levelCache[n] = lvl;
-    return lvl;
-}
-
-
-/* ==========================================================================
-   GAME
+   BATTLE ROYALE — client
+   The server owns the simulation. This end predicts nothing: it interpolates
+   between the state snapshots it is sent, so it can never disagree with the
+   server about who ate whom. At ~11 ticks a second that is enough to look
+   continuous.
    ========================================================================== */
 (function () {
     'use strict';
 
-    const CANVAS_SIZE = 700;
-    const GRID_SIZE   = N;                          // 25, from the level module
-    const TILE        = CANVAS_SIZE / GRID_SIZE;
-    const BODY_W      = TILE * 0.84;
-    const IDLE_FRAME_MS = 50;
-    const SWIPE_THRESHOLD = 30;
-    const GAPE_DISTANCE = 4;
-
-    /* Lateral undulation — see the notes on renderSnakeBody. */
-    const WAVE_LENGTH = TILE * 4.6;
-    const WAVE_AMP    = TILE * 0.40;
-    const WAVE_HEAD   = TILE * 1.35;
-    const WAVE_TAIL   = TILE * 0.90;
-
-    /* ---------------- DOM ---------------- */
-    const canvas = document.getElementById('gameCanvas');
+    const CANVAS = 700, CELL = 28, HALF = CANVAS / 2;
+    const $ = id => document.getElementById(id);
+    const canvas = $('gameCanvas');
     const ctx = canvas && canvas.getContext('2d');
     if (!ctx) {
-        document.body.innerHTML =
-            '<p style="color:#fff;text-align:center;margin-top:50px;font:16px system-ui">' +
-            'This game needs HTML5 Canvas. Please use a current browser.</p>';
+        document.body.innerHTML = '<p style="color:#fff;text-align:center;margin-top:50px;' +
+            'font:16px system-ui">This game needs HTML5 Canvas.</p>';
         return;
     }
     ctx.imageSmoothingQuality = 'high';
 
-    const $ = id => document.getElementById(id);
-    const scoreEl = $('score'), levelEl = $('level'), highScoreEl = $('highScore');
-    const goalEl = $('goalCount'), goalNeedEl = $('goalNeed'), goalFill = $('goalFill');
-    const biomeEl = $('biomeName'), speciesEl = $('speciesName');
-    const levelNameEl = $('levelName'), openEdgeEl = $('openEdge');
-    const startScreen = $('startScreen'), gameOverScreen = $('gameOverScreen');
-    const finalScoreEl = $('finalScore'), finalLevelEl = $('finalLevel'), finalNameEl = $('finalLevelName');
-    const startBtn = $('startBtn'), pauseBtn = $('pauseBtn'), restartBtn = $('restartBtn');
-    const retryBtn = $('retryBtn'), continueBtn = $('continueBtn'), newGameBtn = $('newGameBtn');
-    const levelPick = $('levelPick'), contWrap = $('continueWrap');
+    const joinPanel = $('battleScreen'), deathPanel = $('battleDeath');
     const announcer = $('game-announcer');
-    const customScreen = $('customScreen'), snakeBtn = $('snakeBtn');
-    const skinPreview = $('skinPreview'), wearingEl = $('wearing');
-    const closeCustomBtn = $('closeCustomBtn'), useCustomBtn = $('useCustomBtn'), useWildBtn = $('useWildBtn');
-
-    const bgCanvas = document.createElement('canvas');
-    bgCanvas.width = bgCanvas.height = CANVAS_SIZE;
-    const bgCtx = bgCanvas.getContext('2d');
-    const obsCanvas = document.createElement('canvas');   // walls, drawn over the snake
-    obsCanvas.width = obsCanvas.height = CANVAS_SIZE;
-    const obsCtx = obsCanvas.getContext('2d');
-
-    /* ---------------- state ---------------- */
-    let level = null;
-    let levelNo = 1;
-    let eaten = 0;
-    let snake = [];
-    let direction = { x: 1, y: 0 };
-    let pending = [];
-    let food = {};
-    let score = 0, levelStartScore = 0;
-    let gameState = 'start';        // start | playing | paused | dead | cleared
-    let frame = 0, steps = 0, idleDrift = 0;
-    let particles = [], bursts = [], floaters = [];
-    let banner = null, deathFlash = 0, gape = 0;
-    let swallow = null;        // prey being drawn into the mouth right now
-    let bumps = [];            // boluses working their way down the body
-    let digestClock = 0;       // only advances while playing, so pausing does not digest
-    let headInfo = null;       // where the mouth ended up on the last draw
-    let strike = 0;            // 0..1, forces the jaw wide on the strike
-    let lastTime = 0, accumulated = 0;
-    let animationId = null, idleId = null;
-    let touchStartX = 0, touchStartY = 0;
-
-    function store(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* private mode */ } }
-    function fetchNum(k) {
-        try { return parseInt(localStorage.getItem(k), 10) || 0; } catch (e) { return 0; }
-    }
-    let highScore = fetchNum('serpentHighScore');
-    let furthest = Math.min(LEVEL_COUNT, Math.max(1, fetchNum('serpentFurthest') || 1));
-
-    function loadSkin() {
-        try {
-            const raw = localStorage.getItem('serpentSkin');
-            if (!raw) return Object.assign({}, DEFAULT_SKIN);
-            return Object.assign({}, DEFAULT_SKIN, JSON.parse(raw));
-        } catch (e) { return Object.assign({}, DEFAULT_SKIN); }
-    }
-    let skin = loadSkin();
-    /* Two separate choices. `useCustom` is the toggle between a real snake and
-       your own design; `wildChoice` says *which* real snake — the one that
-       actually lives in the biome, or a species you picked yourself. */
-    let useCustom = false;
-    let wildChoice = 'biome';
-    try {
-        useCustom = localStorage.getItem('serpentUseCustom') === '1';
-        const v = localStorage.getItem('serpentWild');
-        if (v && (v === 'biome' || SPECIES[v])) wildChoice = v;
-    } catch (e) { }
-    setCustomSkin(skin);
-    const WILD_KEYS = ['grassSnake','emeraldBoa','sidewinder','cornSnake','leucisticPython',
-                       'cottonmouth','blackMamba','milkSnake','blueCoral','rainbowBoa'];
-
-    const biome = () => BIOMES[level ? level.biome : 0];
-    const activeSpecies = () =>
-        useCustom ? 'custom' : (wildChoice === 'biome' ? biome().species : wildChoice);
     const announce = m => { if (announcer) announcer.textContent = m; };
-    const showOverlay = (el, on) => { if (el) el.classList.toggle('show', on); };
-    const isWall = (x, y) => level.blocked[y * GRID_SIZE + x] === 1;
+    const show = (el, on) => { if (el) el.classList.toggle('show', on); };
 
-    /* ==================== AMBIENT PARTICLES ==================== */
-    const AIR = {
-        petal:   { vy: [0.22, 0.55],  vx: [-0.34, 0.34], sz: [3, 7],     spin: 0.035, a: [0.35, 0.80], shape: 'petal' },
-        spore:   { vy: [-0.34, -0.07],vx: [-0.14, 0.14], sz: [1.4, 3.4], spin: 0.010, a: [0.25, 0.65], shape: 'dot', glow: 1 },
-        sand:    { vy: [-0.10, 0.10], vx: [1.10, 3.10],  sz: [1, 2.6],   spin: 0,     a: [0.18, 0.46], shape: 'dot' },
-        leaf:    { vy: [0.38, 0.95],  vx: [-0.55, 0.55], sz: [4, 8],     spin: 0.065, a: [0.50, 0.90], shape: 'leaf' },
-        snow:    { vy: [0.35, 1.05],  vx: [-0.40, 0.40], sz: [1.4, 3.8], spin: 0.020, a: [0.45, 0.95], shape: 'dot' },
-        firefly: { vy: [-0.20, 0.20], vx: [-0.28, 0.28], sz: [1.8, 3.6], spin: 0,     a: [0.20, 0.90], shape: 'dot', glow: 3, blink: 1 },
-        dust:    { vy: [-0.14, 0.14], vx: [0.35, 1.35],  sz: [1, 3],     spin: 0,     a: [0.14, 0.42], shape: 'dot' },
-        ember:   { vy: [-1.35, -0.45],vx: [-0.38, 0.38], sz: [1.4, 3.4], spin: 0,     a: [0.35, 1.00], shape: 'dot', glow: 3, flicker: 1 },
-        mote:    { vy: [-0.24, 0.24], vx: [-0.24, 0.24], sz: [1.4, 3.4], spin: 0,     a: [0.22, 0.78], shape: 'dot', glow: 2 },
-        star:    { vy: [0.015, 0.06], vx: [-0.02, 0.02], sz: [0.6, 1.8], spin: 0,     a: [0.18, 1.00], shape: 'dot', twinkle: 1 }
-    };
-    const rand = (a, b) => a + Math.random() * (b - a);
-
-    function initParticles() {
-        const B = biome(), spec = AIR[B.particle.kind] || AIR.dust;
-        particles = [];
-        for (let i = 0; i < B.particle.n; i++)
-            particles.push({
-                x: Math.random() * CANVAS_SIZE, y: Math.random() * CANVAS_SIZE,
-                vx: rand(spec.vx[0], spec.vx[1]), vy: rand(spec.vy[0], spec.vy[1]),
-                sz: rand(spec.sz[0], spec.sz[1]), a: rand(spec.a[0], spec.a[1]),
-                rot: Math.random() * 6.283, phase: Math.random() * 6.283, sway: rand(0.4, 1.4)
-            });
-    }
-
-    function updateParticles() {
-        const spec = AIR[biome().particle.kind] || AIR.dust;
-        for (let i = 0; i < particles.length; i++) {
-            const p = particles[i];
-            p.x += p.vx + (spec.shape !== 'dot' ? Math.sin(frame * 0.03 + p.phase) * p.sway * 0.4 : 0);
-            p.y += p.vy;
-            p.rot += spec.spin;
-            if (p.y > CANVAS_SIZE + 12) { p.y = -12; p.x = Math.random() * CANVAS_SIZE; }
-            if (p.y < -12) { p.y = CANVAS_SIZE + 12; p.x = Math.random() * CANVAS_SIZE; }
-            if (p.x > CANVAS_SIZE + 12) p.x = -12;
-            if (p.x < -12) p.x = CANVAS_SIZE + 12;
+    /* ---- which snake you wear. Shared with the campaign through the same
+       stored settings, so a design made there shows up here. ---- */
+    const WILD = ['grassSnake', 'emeraldBoa', 'sidewinder', 'cornSnake', 'leucisticPython',
+                  'cottonmouth', 'blackMamba', 'milkSnake', 'blueCoral', 'rainbowBoa'];
+    let skin = Object.assign({}, DEFAULT_SKIN);
+    let species = 'grassSnake';
+    try {
+        const raw = localStorage.getItem('serpentSkin');
+        if (raw) skin = Object.assign({}, DEFAULT_SKIN, JSON.parse(raw));
+        if (localStorage.getItem('serpentUseCustom') === '1') species = 'custom';
+        else {
+            const w = localStorage.getItem('serpentWild');
+            if (w && SPECIES[w]) species = w;
         }
-    }
+        const n = localStorage.getItem('serpentName');
+        if (n) $('brName').value = n;
+        const u = localStorage.getItem('serpentArena');
+        if (u) $('brUrl').value = u;
+    } catch (e) { /* private mode */ }
+    setCustomSkin(skin);
 
-    const glowCache = {};
-    function glowStamp(color, radius) {
-        const key = color + '|' + radius.toFixed(1);
-        if (glowCache[key]) return glowCache[key];
-        const s = Math.ceil(radius) * 2 + 2;
-        const cv = document.createElement('canvas');
-        cv.width = cv.height = s;
-        const c = cv.getContext('2d');
-        const g = c.createRadialGradient(s / 2, s / 2, 0, s / 2, s / 2, radius);
-        g.addColorStop(0, color); g.addColorStop(0.4, color);
-        g.addColorStop(1, 'rgba(255,255,255,0)');
-        c.fillStyle = g;
-        c.beginPath(); c.arc(s / 2, s / 2, radius, 0, Math.PI * 2); c.fill();
-        glowCache[key] = cv;
-        return cv;
-    }
-
-    function drawParticles() {
-        const B = biome(), spec = AIR[B.particle.kind] || AIR.dust, col = B.particle.color;
-        for (let i = 0; i < particles.length; i++) {
-            const p = particles[i];
-            let a = p.a;
-            if (spec.blink)   a *= 0.30 + 0.70 * Math.max(0, Math.sin(frame * 0.06 + p.phase));
-            if (spec.flicker) a *= 0.55 + 0.45 * Math.sin(frame * 0.4 + p.phase);
-            if (spec.twinkle) a *= 0.35 + 0.65 * Math.abs(Math.sin(frame * 0.035 + p.phase));
-            ctx.save();
-            ctx.globalAlpha = Math.max(0, Math.min(1, a));
-            ctx.translate(p.x, p.y);
-            if (spec.glow) {
-                const st = glowStamp(col, p.sz * (1 + spec.glow));
-                ctx.drawImage(st, -st.width / 2, -st.width / 2);
-                ctx.globalAlpha = Math.min(1, a * 1.3);
-                ctx.fillStyle = '#fff';
-                ctx.beginPath(); ctx.arc(0, 0, p.sz * 0.42, 0, Math.PI * 2); ctx.fill();
-            } else if (spec.shape === 'petal') {
-                ctx.rotate(p.rot); ctx.fillStyle = col;
-                ctx.beginPath(); ctx.ellipse(0, 0, p.sz, p.sz * 0.52, 0, 0, Math.PI * 2); ctx.fill();
-            } else if (spec.shape === 'leaf') {
-                ctx.rotate(p.rot); ctx.fillStyle = col;
-                ctx.beginPath();
-                ctx.moveTo(0, -p.sz);
-                ctx.quadraticCurveTo(p.sz * 0.75, 0, 0, p.sz);
-                ctx.quadraticCurveTo(-p.sz * 0.75, 0, 0, -p.sz);
-                ctx.closePath(); ctx.fill();
-            } else {
-                ctx.fillStyle = col;
-                ctx.beginPath(); ctx.arc(0, 0, p.sz, 0, Math.PI * 2); ctx.fill();
-            }
-            ctx.restore();
-        }
-    }
-
-    /* ==================== LEVEL LOADING ==================== */
-    function loadLevel(n) {
-        levelNo = Math.max(1, Math.min(LEVEL_COUNT, n));
-        level = buildLevel(levelNo);
-        eaten = 0;
-        snake = level.start.map(c => ({ x: c.x, y: c.y }));
-        direction = { x: level.dir.x, y: level.dir.y };
-        pending = [];
-        frame = 0; steps = 0; idleDrift = 0;
-        bursts = []; floaters = []; deathFlash = 0; gape = 0;
-        bumps = []; swallow = null; strike = 0; digestClock = 0; headInfo = null;
-        lastTime = 0; accumulated = 0;
-
-        paintBiome(bgCtx, CANVAS_SIZE, level.biome);
-        paintWallShadows(bgCtx, level.blocked, GRID_SIZE, TILE);
-        obsCtx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
-        paintWalls(obsCtx, level.blocked, GRID_SIZE, TILE, biome().id, 7000 + levelNo * 31);
-
-        initParticles();
-        spawnFood();
-        updateHud();
-
-        if (levelNo > furthest) {
-            furthest = levelNo;
-            store('serpentFurthest', furthest);
-            buildLevelPicker();          // keep the menu's list in step with progress
-        }
-
-        banner = {
-            t: 0, level: levelNo, name: level.meta.name,
-            species: SPECIES[activeSpecies()].name, region: biome().name,
-            wrap: level.meta.wrap
-        };
-    }
-
-    function updateHud() {
-        const m = level.meta;
-        scoreEl.textContent = score;
-        levelEl.textContent = levelNo;
-        highScoreEl.textContent = highScore;
-        goalEl.textContent = eaten;
-        goalNeedEl.textContent = m.goal;
-        goalFill.style.width = Math.min(100, (eaten / m.goal) * 100).toFixed(1) + '%';
-        levelNameEl.textContent = m.name;
-        biomeEl.textContent = biome().name;
-        speciesEl.textContent = SPECIES[activeSpecies()].name;
-        openEdgeEl.hidden = !m.wrap;
-    }
-
-    /* ==================== DIGESTION ====================
-       A swallowed animal shows as a lump in the body wall that works its way
-       down over BOLUS_TTL and shrinks away. The clock only runs while playing,
-       so a paused snake does not digest. */
-    const BOLUS_TTL = 35000;              // 35 seconds, as asked
-
-    function addBolus(type) {
-        bumps.push({
-            born: digestClock,
-            amp0: (PREY[type].bulge || 0.5),
-            type: type
-        });
-    }
-
-    /* Resolve every live bolus into the {s, amp, hw} the renderer wants, and
-       drop the ones that have finished digesting. */
-    function activeBumps() {
-        if (!bumps.length) return null;
-        const bodyLen = Math.max(BODY_W * 3, snake.length * TILE);
-        const out = [];
-        for (let i = bumps.length - 1; i >= 0; i--) {
-            const b = bumps[i];
-            const u = (digestClock - b.born) / BOLUS_TTL;
-            if (u >= 1) { bumps.splice(i, 1); continue; }
-            // eases away from the head, so it is quick to clear the throat and
-            // then creeps along the gut
-            const travel = 1 - Math.pow(1 - u, 2.2);
-            const s = BODY_W * 1.15 + travel * (bodyLen * 0.70 - BODY_W * 1.15);
-            const amp = b.amp0 * Math.pow(1 - u, 0.55);
-            if (amp < 0.02) continue;
-            out.push({ s: s, amp: amp, hw: BODY_W * (0.80 + b.amp0 * 0.55) });
-        }
-        return out.length ? out : null;
-    }
-
-    /* ==================== SNAKE GEOMETRY ==================== */
-    function cellPoint(from, to, t) {
-        let dx = to.x - from.x, dy = to.y - from.y;
-        if (dx >  GRID_SIZE / 2) dx -= GRID_SIZE;
-        if (dx < -GRID_SIZE / 2) dx += GRID_SIZE;
-        if (dy >  GRID_SIZE / 2) dy -= GRID_SIZE;
-        if (dy < -GRID_SIZE / 2) dy += GRID_SIZE;
-        return {
-            x: (to.x - dx * (1 - t)) * TILE + TILE / 2,
-            y: (to.y - dy * (1 - t)) * TILE + TILE / 2
-        };
-    }
-
-    function snakeGroups(t) {
-        const n = snake.length;
-        if (n === 0) return [];
-        const pts = new Array(n);
-        for (let i = 0; i < n; i++) {
-            if (i < n - 1)   pts[i] = cellPoint(snake[i + 1], snake[i], t);
-            else if (n >= 2) pts[i] = cellPoint(snake[n - 1], snake[n - 2], t);
-            else             pts[i] = cellPoint(snake[0], snake[0], t);
-        }
-        const CUT = TILE * 2.2, groups = [];
-        let cur = [pts[0]];
-        for (let i = 1; i < n; i++) {
-            if (Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y) > CUT) {
-                groups.push(cur); cur = [pts[i]];
-            } else cur.push(pts[i]);
-        }
-        groups.push(cur);
-        return groups;
-    }
-
-    function drawSnake() {
-        const t = gameState === 'playing'
-            ? Math.max(0, Math.min(1, accumulated / level.meta.speed)) : 1;
-        const groups = snakeGroups(t);
-        if (!groups.length) return;
-        const travelled = gameState === 'playing' ? (steps + t) * TILE : idleDrift;
-        headInfo = renderSnake(ctx, groups, activeSpecies(), BODY_W, frame, {
-            headAngle: Math.atan2(direction.y, direction.x),
-            gape: Math.max(gape, strike),
-            bumps: activeBumps(),
-            undulation: { amp: WAVE_AMP, lambda: WAVE_LENGTH, travelled: travelled,
-                          rampHead: WAVE_HEAD, rampTail: WAVE_TAIL }
-        });
-    }
-
-    /* ==================== FOOD ==================== */
-    function spawnFood() {
-        const roster = biome().prey;
-        let total = 0;
-        for (let i = 0; i < roster.length; i++) total += PREY[roster[i]].weight;
-        let r = Math.random() * total, type = roster[0];
-        for (let i = 0; i < roster.length; i++) {
-            r -= PREY[roster[i]].weight;
-            if (r <= 0) { type = roster[i]; break; }
-        }
-
-        // Every free cell is reachable (sealed pockets were walled off when the
-        // level was built), so any of them is a fair place to put an animal.
-        const open = [];
-        for (let y = 0; y < GRID_SIZE; y++)
-            for (let x = 0; x < GRID_SIZE; x++) {
-                if (isWall(x, y)) continue;
-                let hit = false;
-                for (let i = 0; i < snake.length; i++)
-                    if (snake[i].x === x && snake[i].y === y) { hit = true; break; }
-                if (!hit) open.push({ x: x, y: y });
-            }
-        if (!open.length) { food = {}; return; }
-        const pick = open[(Math.random() * open.length) | 0];
-        food = { x: pick.x, y: pick.y, type: type, points: PREY[type].points };
-    }
-
-    function drawFood() {
-        if (food.x === undefined) return;
-        renderPrey(ctx, food.x * TILE + TILE / 2, food.y * TILE + TILE / 2,
-                   food.type, TILE * 0.52 * (PREY[food.type].r / 0.7), frame, 0);
-    }
-
-    /* ==================== THE SWALLOW ====================
-       Prey used to vanish the instant the head reached it. Now the strike is
-       visible: the jaw goes wide, the animal is drawn into the mouth over
-       SWALLOW_MS while shrinking and turning to line up with the throat, and
-       the gulp hands off to the bolus travelling down the neck. */
-    const SWALLOW_MS = 460;
-
-    function beginSwallow(type, wx, wy) {
-        swallow = { type: type, t: 0, x: wx, y: wy, spin: 0 };
-        strike = 1;
-    }
-
-    function updateSwallow(dt) {
-        if (strike > 0) strike = Math.max(0, strike - dt / 260);
-        if (!swallow) return;
-        swallow.t += dt;
-        if (swallow.t >= SWALLOW_MS) {
-            addBolus(swallow.type);          // it is in the neck now
-            swallow = null;
-        }
-    }
-
-    function drawSwallow() {
-        if (!swallow || !headInfo) return;
-        const u = Math.min(1, swallow.t / SWALLOW_MS);
-        // mouth position: the snout tip, wherever the head currently is
-        const mx = headInfo.head.x + Math.cos(headInfo.angle) * headInfo.snout;
-        const my = headInfo.head.y + Math.sin(headInfo.angle) * headInfo.snout;
-
-        // the animal is hauled from where it was caught to the mouth, and keeps
-        // being dragged as the snake moves on
-        const ease = 1 - Math.pow(1 - u, 2.4);
-        const px = swallow.x + (mx - swallow.x) * ease;
-        const py = swallow.y + (my - swallow.y) * ease;
-
-        // shrinks as it goes down, and the last fifth is inside the head
-        const base = TILE * 0.52 * (PREY[swallow.type].r / 0.7);
-        const scale = Math.max(0, 1 - Math.pow(u, 1.7) * 1.06);
-        if (scale <= 0.02) return;
-
-        ctx.save();
-        // squeezed lengthwise by the jaws as it is worked down
-        ctx.translate(px, py);
-        ctx.rotate(headInfo.angle + Math.PI / 2);
-        ctx.scale(1 - u * 0.34, 1 + u * 0.20);
-        ctx.rotate(-(headInfo.angle + Math.PI / 2));
-        ctx.globalAlpha = u > 0.82 ? Math.max(0, (1 - u) / 0.18) : 1;
-        renderPrey(ctx, 0, 0, swallow.type, base * scale, frame, headInfo.angle + Math.PI / 2);
-        ctx.restore();
-    }
-
-    /* ==================== EFFECTS ==================== */
-    function spawnBurst(x, y, color) {
-        const bits = [];
-        for (let i = 0; i < 16; i++) {
-            const a = Math.random() * 6.283, s = 1.4 + Math.random() * 3.4;
-            bits.push({ x: x, y: y, vx: Math.cos(a) * s, vy: Math.sin(a) * s,
-                        r: 1.4 + Math.random() * 2.6, life: 1 });
-        }
-        bursts.push({ bits: bits, color: color, ring: 6, alpha: 0.9, x: x, y: y });
-    }
-
-    function drawBursts() {
-        for (let i = bursts.length - 1; i >= 0; i--) {
-            const b = bursts[i];
-            ctx.save();
-            ctx.globalAlpha = b.alpha * 0.7;
-            ctx.strokeStyle = b.color; ctx.lineWidth = 2.4;
-            ctx.beginPath(); ctx.arc(b.x, b.y, b.ring, 0, Math.PI * 2); ctx.stroke();
-            ctx.fillStyle = b.color;
-            for (let k = 0; k < b.bits.length; k++) {
-                const p = b.bits[k];
-                ctx.globalAlpha = b.alpha * p.life;
-                ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
-                p.x += p.vx; p.y += p.vy;
-                p.vx *= 0.90; p.vy *= 0.90; p.vy += 0.10;
-                p.life -= 0.035;
-            }
-            ctx.restore();
-            b.ring += 3.2; b.alpha -= 0.035;
-            if (b.alpha <= 0) bursts.splice(i, 1);
-        }
-    }
-
-    function drawFloaters() {
-        for (let i = floaters.length - 1; i >= 0; i--) {
-            const f = floaters[i];
-            ctx.save();
-            ctx.globalAlpha = Math.max(0, f.alpha);
-            ctx.font = '700 20px "Iowan Old Style", Georgia, serif';
-            ctx.textAlign = 'center';
-            ctx.lineWidth = 3.5; ctx.strokeStyle = 'rgba(0,0,0,0.65)';
-            ctx.strokeText(f.text, f.x, f.y);
-            ctx.fillStyle = f.color;
-            ctx.fillText(f.text, f.x, f.y);
-            ctx.restore();
-            f.y -= 0.85; f.alpha -= 0.018;
-            if (f.alpha <= 0) floaters.splice(i, 1);
-        }
-    }
-
-    function drawBanner() {
-        if (!banner) return;
-        banner.t++;
-        const IN = 18, HOLD = banner.cleared ? 46 : 62, OUT = 26;
-        let a = 1;
-        if (banner.t < IN) a = banner.t / IN;
-        else if (banner.t > IN + HOLD) a = 1 - (banner.t - IN - HOLD) / OUT;
-        if (banner.t > IN + HOLD + OUT) { banner = null; return; }
-        a = Math.max(0, Math.min(1, a));
-
-        const cy = CANVAS_SIZE * 0.42;
-        ctx.save();
-        ctx.globalAlpha = a;
-        ctx.textAlign = 'center';
-        ctx.fillStyle = 'rgba(8,10,8,0.68)';
-        ctx.fillRect(0, cy - 72, CANVAS_SIZE, 152);
-        ctx.strokeStyle = 'rgba(214,171,73,0.55)';
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(0, cy - 72); ctx.lineTo(CANVAS_SIZE, cy - 72);
-        ctx.moveTo(0, cy + 80); ctx.lineTo(CANVAS_SIZE, cy + 80);
-        ctx.stroke();
-
-        ctx.fillStyle = '#d6ab49';
-        ctx.font = '500 12px ui-monospace, "SF Mono", Menlo, monospace';
-        ctx.fillText(banner.cleared ? 'LEVEL CLEARED'
-                                    : 'LEVEL ' + banner.level + ' OF ' + LEVEL_COUNT,
-                     CANVAS_SIZE / 2, cy - 40);
-
-        ctx.fillStyle = '#f2ece0';
-        ctx.font = '600 38px "Iowan Old Style", Georgia, serif';
-        ctx.fillText(banner.name, CANVAS_SIZE / 2, cy + 2);
-
-        ctx.fillStyle = 'rgba(242,236,224,0.62)';
-        ctx.font = 'italic 16px "Iowan Old Style", Georgia, serif';
-        ctx.fillText(banner.region + ' · ' + banner.species, CANVAS_SIZE / 2, cy + 32);
-
-        ctx.font = '500 11px ui-monospace, Menlo, monospace';
-        ctx.fillStyle = banner.wrap ? '#7fd8a0' : 'rgba(242,236,224,0.38)';
-        ctx.fillText(banner.wrap ? 'EDGES OPEN — THE MAP WRAPS'
-                                 : 'WALLS ARE LETHAL', CANVAS_SIZE / 2, cy + 58);
-        ctx.restore();
-    }
-
-    function drawDeathFlash() {
-        if (deathFlash <= 0) return;
-        ctx.save();
-        ctx.globalAlpha = deathFlash;
-        ctx.fillStyle = '#8e1206';
-        ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
-        ctx.restore();
-        deathFlash = Math.max(0, deathFlash - 0.045);
-    }
-
-    /* ==================== LOOP ==================== */
-    function updateGape() {
-        if (food.x === undefined || gameState !== 'playing' || !snake.length) {
-            gape = Math.max(0, gape - 0.06);
-            return;
-        }
-        let dx = Math.abs(snake[0].x - food.x), dy = Math.abs(snake[0].y - food.y);
-        if (level.meta.wrap) { dx = Math.min(dx, GRID_SIZE - dx); dy = Math.min(dy, GRID_SIZE - dy); }
-        const dist = dx + dy;
-        const target = dist <= GAPE_DISTANCE ? 1 - dist / (GAPE_DISTANCE + 1) : 0;
-        gape += (target - gape) * 0.22;
-        if (gape < 0.01) gape = 0;
-    }
-
-    function step() {
-        if (pending.length) direction = pending.shift();
-        updateGape();
-
-        let hx = snake[0].x + direction.x;
-        let hy = snake[0].y + direction.y;
-
-        if (level.meta.wrap) {
-            if (hx < 0) hx = GRID_SIZE - 1; else if (hx >= GRID_SIZE) hx = 0;
-            if (hy < 0) hy = GRID_SIZE - 1; else if (hy >= GRID_SIZE) hy = 0;
-        } else if (hx < 0 || hy < 0 || hx >= GRID_SIZE || hy >= GRID_SIZE) {
-            die('the edge'); return;
-        }
-
-        if (isWall(hx, hy)) { die('a wall'); return; }
-
-        const eating = (hx === food.x && hy === food.y);
-        const limit = eating ? snake.length : snake.length - 1;
-        for (let i = 0; i < limit; i++)
-            if (snake[i].x === hx && snake[i].y === hy) { die('itself'); return; }
-
-        snake.unshift({ x: hx, y: hy });
-        if (food.x === undefined) spawnFood();
-
-        if (eating) {
-            score += food.points;
-            eaten++;
-            const fx = food.x * TILE + TILE / 2, fy = food.y * TILE + TILE / 2;
-            beginSwallow(food.type, fx, fy);
-            spawnBurst(fx, fy, biome().particle.color);
-            floaters.push({ x: fx, y: fy - 12, text: '+' + food.points, color: '#f6e7bd', alpha: 1 });
-            if (score > highScore) { highScore = score; store('serpentHighScore', highScore); }
-            updateHud();
-            scoreEl.classList.remove('pop'); void scoreEl.offsetWidth; scoreEl.classList.add('pop');
-
-            if (eaten >= level.meta.goal) { clearLevel(); return; }
-            spawnFood();
-        } else {
-            snake.pop();
-        }
-        steps++; frame++;
-    }
-
-    function clearLevel() {
-        food = {};
-        if (levelNo >= LEVEL_COUNT) {
-            gameState = 'cleared';
-            if (animationId) { cancelAnimationFrame(animationId); animationId = null; }
-            finalScoreEl.textContent = score;
-            finalLevelEl.textContent = levelNo;
-            finalNameEl.textContent = 'You finished all ' + LEVEL_COUNT + ' levels.';
-            gameOverScreen.querySelector('h2').textContent = 'The Abyss is behind you';
-            showOverlay(gameOverScreen, true);
-            startIdle();
-            announce('All levels complete. Final score ' + score);
-            return;
-        }
-        gameState = 'cleared';
-        if (animationId) { cancelAnimationFrame(animationId); animationId = null; }
-        banner = { t: 0, cleared: true, level: levelNo, name: level.meta.name,
-                   species: SPECIES[activeSpecies()].name, region: biome().name,
-                   wrap: level.meta.wrap };
-        announce('Level ' + levelNo + ' cleared.');
-        startIdle();
-        setTimeout(function () {
-            if (gameState !== 'cleared') return;
-            levelStartScore = score;
-            loadLevel(levelNo + 1);
-            gameState = 'playing';
-            stopIdle();
-            lastTime = 0; accumulated = 0;
-            animationId = requestAnimationFrame(loop);
-        }, 1500);
-    }
-
-    function die(cause) {
-        gameState = 'dead';
-        if (animationId) { cancelAnimationFrame(animationId); animationId = null; }
-        deathFlash = 0.6;
-        finalScoreEl.textContent = score;
-        finalLevelEl.textContent = levelNo;
-        finalNameEl.textContent = level.meta.name + ' — you hit ' + cause + '.';
-        gameOverScreen.querySelector('h2').textContent = 'Caught out';
-        requestAnimationFrame(function () {
-            draw();
-            setTimeout(function () { showOverlay(gameOverScreen, true); startIdle(); }, 420);
-        });
-        announce('You hit ' + cause + ' on level ' + levelNo + '. Score ' + score);
-    }
-
-    function draw() {
-        ctx.drawImage(bgCanvas, 0, 0);
-        drawParticles();
-        drawFood();
-        drawSnake();
-        drawSwallow();                    // after the snake, so it reads as going *into* the mouth
-        ctx.drawImage(obsCanvas, 0, 0);   // walls occlude anything pressed against them
-        drawBursts();
-        drawFloaters();
-        drawBanner();
-        drawDeathFlash();
-
-        if (gameState === 'paused') {
-            ctx.save();
-            ctx.fillStyle = 'rgba(6,8,6,0.72)';
-            ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
-            ctx.textAlign = 'center';
-            ctx.fillStyle = '#f2ece0';
-            ctx.font = '600 46px "Iowan Old Style", Georgia, serif';
-            ctx.fillText('Paused', CANVAS_SIZE / 2, CANVAS_SIZE / 2 - 4);
-            ctx.fillStyle = 'rgba(242,236,224,0.55)';
-            ctx.font = '500 12px ui-monospace, Menlo, monospace';
-            ctx.fillText('PRESS SPACE TO RESUME', CANVAS_SIZE / 2, CANVAS_SIZE / 2 + 28);
-            ctx.restore();
-        }
-    }
-
-    function loop(ts) {
-        if (gameState !== 'playing') return;
-        try {
-            if (!lastTime) lastTime = ts;
-            let dt = ts - lastTime;
-            lastTime = ts;
-            if (dt > 250) dt = 250;
-            accumulated += dt;
-            digestClock += dt;
-            updateSwallow(dt);
-            const speed = level.meta.speed;
-            let guard = 0;
-            while (accumulated >= speed && guard++ < 8) {
-                step();
-                accumulated -= speed;
-                if (gameState !== 'playing') return;
-            }
-            frame++;
-            updateParticles();
-            draw();
-            animationId = requestAnimationFrame(loop);
-        } catch (err) {
-            gameState = 'dead';
-            if (animationId) { cancelAnimationFrame(animationId); animationId = null; }
-            showError();
-            announce('An error occurred. Please refresh the page.');
-        }
-    }
-
-    function showError() {
-        ctx.save();
-        ctx.fillStyle = 'rgba(0,0,0,0.9)';
-        ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
-        ctx.textAlign = 'center';
-        ctx.fillStyle = '#d4573a';
-        ctx.font = '600 26px Georgia, serif';
-        ctx.fillText('Something went wrong', CANVAS_SIZE / 2, CANVAS_SIZE / 2 - 20);
-        ctx.fillStyle = '#cdc5b1';
-        ctx.font = '16px Georgia, serif';
-        ctx.fillText('Refresh the page to start again.', CANVAS_SIZE / 2, CANVAS_SIZE / 2 + 16);
-        ctx.restore();
-    }
-
-    /* ==================== IDLE ==================== */
-    function startIdle() {
-        if (idleId) return;
-        let last = 0;
-        (function idle(ts) {
-            if (gameState === 'playing') { idleId = null; return; }
-            if (ts - last >= IDLE_FRAME_MS) {
-                frame++;
-                if (gameState !== 'paused') {
-                    idleDrift += 1.5;
-                    updateSwallow(IDLE_FRAME_MS);
-                }
-                updateParticles(); draw(); last = ts;
-                if (customScreen && customScreen.classList.contains('show')) {
-                    previewFrame++; drawSkinPreview();
-                }
-            }
-            idleId = requestAnimationFrame(idle);
-        })(0);
-    }
-    function stopIdle() { if (idleId) { cancelAnimationFrame(idleId); idleId = null; } }
-
-    /* ==================== FLOW ==================== */
-    function beginAt(n) {
-        score = 0; levelStartScore = 0;
-        showOverlay(startScreen, false);
-        showOverlay(gameOverScreen, false);
-        loadLevel(n);
-        gameState = 'playing';
-        stopIdle();
-        if (animationId) cancelAnimationFrame(animationId);
-        animationId = requestAnimationFrame(loop);
-        announce('Level ' + levelNo + ', ' + level.meta.name + ', in the ' + biome().name);
-    }
-
-    function retryLevel() {
-        score = levelStartScore;
-        showOverlay(gameOverScreen, false);
-        loadLevel(levelNo);
-        gameState = 'playing';
-        stopIdle();
-        if (animationId) cancelAnimationFrame(animationId);
-        animationId = requestAnimationFrame(loop);
-        announce('Retrying level ' + levelNo);
-    }
-
-    function togglePause() {
-        if (gameState === 'playing') {
-            gameState = 'paused';
-            if (animationId) { cancelAnimationFrame(animationId); animationId = null; }
-            draw(); startIdle(); announce('Paused');
-        } else if (gameState === 'paused') {
-            gameState = 'playing';
-            stopIdle();
-            lastTime = 0; accumulated = 0;
-            animationId = requestAnimationFrame(loop);
-            announce('Resumed');
-        }
-    }
-
-    function toMenu() {
-        if (animationId) { cancelAnimationFrame(animationId); animationId = null; }
-        gameState = 'start';
-        showOverlay(gameOverScreen, false);
-        showOverlay(startScreen, true);
-        buildLevelPicker();
-        loadLevel(levelNo);
-        banner = null;
-        startIdle();
-        announce('Menu');
-    }
-
-    function buildLevelPicker() {
-        if (!levelPick) return;
-        const cur = levelPick.value;
-        levelPick.innerHTML = '';
-        for (let i = 1; i <= furthest; i++) {
-            const o = document.createElement('option');
-            o.value = i;
-            o.textContent = i + '. ' + SCHEDULE[i - 1][2];
-            levelPick.appendChild(o);
-        }
-        levelPick.value = cur && cur <= furthest ? cur : furthest;
-        contWrap.hidden = furthest <= 1;
-    }
-
-    /* ==================== CUSTOMISER ==================== */
-    const SWATCH_FIELDS = [
-        { el: 'swBase',    field: 'base',    list: 'base',    swatch: true  },
-        { el: 'swMark',    field: 'mark',    list: 'mark',    swatch: true  },
-        { el: 'swPattern', field: 'pattern', list: 'pattern', swatch: false },
-        { el: 'swEye',     field: 'eye',     list: 'eye',     swatch: true  },
-        { el: 'swPupil',   field: 'pupil',   list: 'pupil',   swatch: false }
-    ];
-
-    function saveSkin() {
-        try {
-            localStorage.setItem('serpentSkin', JSON.stringify(skin));
-            localStorage.setItem('serpentUseCustom', useCustom ? '1' : '0');
-            localStorage.setItem('serpentWild', wildChoice);
-        } catch (e) { /* private mode */ }
-    }
-
-    function buildSpeciesRow() {
-        const host = $('swSpecies');
-        if (!host) return;
+    function buildSpeciesChips() {
+        const host = $('brSpecies');
         host.innerHTML = '';
-        const opts = [{ id: 'biome', label: 'Per biome' }]
-            .concat(WILD_KEYS.map(function (k) { return { id: k, label: SPECIES[k].short }; }));
-        opts.forEach(function (o) {
+        WILD.concat(['custom']).forEach(k => {
             const btn = document.createElement('button');
             btn.type = 'button';
-            btn.textContent = o.label;
-            btn.title = o.id === 'biome' ? 'Whichever real snake lives in the biome you are in'
-                                         : SPECIES[o.id].name + ' — ' + SPECIES[o.id].latin;
-            btn.addEventListener('click', function () {
-                wildChoice = o.id;
-                useCustom = false;          // picking a real snake means wearing a real snake
-                saveSkin(); refreshCustomiser(); updateHud(); draw();
-                announce('Playing as ' + (o.id === 'biome' ? 'the wild species of each biome'
-                                                           : SPECIES[o.id].name));
+            btn.textContent = k === 'custom' ? 'My design' : SPECIES[k].short;
+            btn.title = k === 'custom' ? 'The snake you designed in the campaign'
+                                       : SPECIES[k].name + ' — ' + SPECIES[k].latin;
+            btn.addEventListener('click', () => {
+                species = k;
+                try { localStorage.setItem('serpentUseCustom', k === 'custom' ? '1' : '0');
+                      if (k !== 'custom') localStorage.setItem('serpentWild', k); } catch (e) { }
+                markChips();
             });
             host.appendChild(btn);
         });
+        markChips();
+    }
+    function markChips() {
+        const host = $('brSpecies'), keys = WILD.concat(['custom']);
+        for (let i = 0; i < host.children.length; i++)
+            host.children[i].setAttribute('aria-pressed', keys[i] === species ? 'true' : 'false');
     }
 
-    function buildCustomiser() {
-        buildSpeciesRow();
-        SWATCH_FIELDS.forEach(function (spec) {
-            const host = $(spec.el);
-            if (!host) return;
-            host.innerHTML = '';
-            SKIN_PARTS[spec.list].forEach(function (part) {
-                const btn = document.createElement('button');
-                btn.type = 'button';
-                if (spec.swatch) {
-                    btn.style.background = part.hex;
-                    btn.title = part.name;
-                    btn.setAttribute('aria-label', part.name);
-                } else {
-                    btn.textContent = part.name;
-                }
-                btn.addEventListener('click', function () {
-                    skin[spec.field] = part.id;
-                    setCustomSkin(skin);
-                    useCustom = true;           // editing your design means wearing it
-                    saveSkin();
-                    refreshCustomiser();
-                    updateHud();
-                });
-                host.appendChild(btn);
-            });
-        });
-        refreshCustomiser();
-    }
-
-    function refreshCustomiser() {
-        SWATCH_FIELDS.forEach(function (spec) {
-            const host = $(spec.el);
-            if (!host) return;
-            const list = SKIN_PARTS[spec.list];
-            for (let i = 0; i < host.children.length; i++)
-                host.children[i].setAttribute('aria-pressed',
-                    list[i].id === skin[spec.field] ? 'true' : 'false');
-        });
-        const host = $('swSpecies');
-        if (host) {
-            const ids = ['biome'].concat(WILD_KEYS);
-            for (let i = 0; i < host.children.length; i++)
-                host.children[i].setAttribute('aria-pressed',
-                    (!useCustom && ids[i] === wildChoice) ? 'true' : 'false');
-        }
-        if (useCustomBtn) useCustomBtn.setAttribute('aria-pressed', useCustom ? 'true' : 'false');
-        if (useWildBtn) useWildBtn.setAttribute('aria-pressed', useCustom ? 'false' : 'true');
-        if (wearingEl)
-            wearingEl.textContent = useCustom ? 'your own design'
-                : (wildChoice === 'biome' ? 'the wild species of each biome'
-                                          : SPECIES[wildChoice].name);
-        drawSkinPreview();
-    }
-
-    /* The preview uses the real renderer, so what you pick is exactly what you
-       get on the board — including a bolus, to show the digestion bulge. */
-    let previewFrame = 0;
-    function drawSkinPreview() {
-        if (!skinPreview) return;
-        const c = skinPreview.getContext('2d');
-        if (!c) return;
-        const W = skinPreview.width, H = skinPreview.height;
-        c.clearRect(0, 0, W, H);
-        const g0 = c.createLinearGradient(0, 0, 0, H);
-        g0.addColorStop(0, '#20201a');
-        g0.addColorStop(1, '#15150f');
-        c.fillStyle = g0;
-        c.fillRect(0, 0, W, H);
-        c.imageSmoothingQuality = 'high';
-        const pts = [];
-        for (let i = 0; i < 30; i++) {
-            const t = i / 29;
-            pts.push({ x: W - 60 - t * (W - 130), y: H / 2 + Math.sin(t * Math.PI * 2.2) * H * 0.22 });
-        }
-        const previewKey = useCustom ? 'custom'
-            : (wildChoice === 'biome' ? biome().species : wildChoice);
-        renderSnake(c, [pts], previewKey, 30, previewFrame, {
-            bumps: [{ s: 132, amp: 0.72, hw: 21 }]
-        });
-    }
-
-    function openCustomiser() {
-        if (gameState === 'playing') togglePause();
-        showOverlay(startScreen, false);
-        showOverlay(gameOverScreen, false);
-        showOverlay(customScreen, true);
-        refreshCustomiser();
-        announce('Snake customiser');
-    }
-
-    function closeCustomiser() {
-        showOverlay(customScreen, false);
-        if (gameState === 'start') showOverlay(startScreen, true);
-        draw();
-    }
-
-    /* ==================== INPUT ==================== */
-    function turn(dx, dy) {
-        if (pending.length >= 2) return;
-        const last = pending.length ? pending[pending.length - 1] : direction;
-        if (last.x === -dx && last.y === -dy) return;
-        if (last.x === dx && last.y === dy) return;
-        pending.push({ x: dx, y: dy });
-    }
-
-    const KEYMAP = {
-        ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0],
-        w: [0, -1], s: [0, 1], a: [-1, 0], d: [1, 0],
-        W: [0, -1], S: [0, 1], A: [-1, 0], D: [1, 0]
+    /* ==================== state ==================== */
+    const B = {
+        ws: null, id: 0, world: { w: 200, h: 200 }, tickMs: 90,
+        prev: null, cur: null, curAt: 0,
+        you: null, lb: [], alive: 0, blips: [],
+        camX: 100, camY: 100, flash: 0, joined: false
     };
+    let frame = 0, raf = null, feast = null;
 
-    document.addEventListener('keydown', function (e) {
-        if (customScreen && customScreen.classList.contains('show')) {
-            if (e.key === 'Escape') { e.preventDefault(); closeCustomiser(); }
-            return;
+    /* ==================== ground ==================== */
+    let tile = null, pattern = null;
+    function buildGround() {
+        if (tile) return;
+        tile = document.createElement('canvas');
+        tile.width = tile.height = CANVAS;
+        const c = tile.getContext('2d');
+        const rng = makeRng(4242);
+        c.fillStyle = '#6f8340';
+        c.fillRect(0, 0, CANVAS, CANVAS);
+
+        /* Everything is stamped nine times, once per wrap offset, so a feature
+           that runs off one edge comes back on the opposite one. Without this
+           the repeat shows as hard seams straight down the arena. */
+        const wrapped = (x, y, draw) => {
+            for (let ox = -1; ox <= 1; ox++)
+                for (let oy = -1; oy <= 1; oy++) {
+                    c.save();
+                    c.translate(x + ox * CANVAS, y + oy * CANVAS);
+                    draw();
+                    c.restore();
+                }
+        };
+
+        for (let i = 0; i < 240; i++) {
+            const x = rng() * CANVAS, y = rng() * CANVAS, r = 40 + rng() * 150;
+            const tone = rng() > 0.5 ? '255,255,255' : '0,0,0';
+            const a = (0.012 + rng() * 0.026).toFixed(3);
+            wrapped(x, y, () => {
+                const g = c.createRadialGradient(0, 0, 0, 0, 0, r);
+                g.addColorStop(0, 'rgba(' + tone + ',' + a + ')');
+                g.addColorStop(1, 'rgba(' + tone + ',0)');
+                c.fillStyle = g;
+                c.fillRect(-r, -r, r * 2, r * 2);
+            });
         }
+        for (let i = 0; i < 1000; i++) {
+            const x = rng() * CANVAS, y = rng() * CANVAS;
+            const h = 5 + rng() * 9, lean = (rng() - 0.5) * 5;
+            const col = rng() > 0.5 ? '90,120,50' : '132,162,82';
+            wrapped(x, y, () => {
+                c.strokeStyle = 'rgba(' + col + ',0.34)';
+                c.lineWidth = 1;
+                c.beginPath(); c.moveTo(0, 0); c.lineTo(lean, -h); c.stroke();
+            });
+        }
+        pattern = ctx.createPattern(tile, 'repeat');
+    }
+
+    /* Decoration is keyed to world position, so it never tiles with the ground
+       and the arena reads as one continuous place rather than a repeat. */
+    const DECOR = [];
+    function buildDecor() {
+        if (DECOR.length) return;
+        const mk = draw => {
+            const cv = document.createElement('canvas');
+            cv.width = cv.height = 44;
+            const c = cv.getContext('2d');
+            c.translate(22, 22); draw(c);
+            return cv;
+        };
+        DECOR.push(mk(c => {
+            const g = c.createRadialGradient(-4, -5, 0, 0, 0, 13);
+            g.addColorStop(0, '#a9a495'); g.addColorStop(0.7, '#807b6d'); g.addColorStop(1, '#4f4b41');
+            c.fillStyle = 'rgba(0,0,0,0.30)';
+            c.beginPath(); c.ellipse(2, 5, 12, 5, 0, 0, Math.PI * 2); c.fill();
+            c.fillStyle = g;
+            c.beginPath(); c.ellipse(0, 0, 12, 9, 0.3, 0, Math.PI * 2); c.fill();
+        }));
+        DECOR.push(mk(c => {
+            for (let i = 0; i < 9; i++) {
+                c.strokeStyle = 'rgba(96,132,52,0.78)'; c.lineWidth = 1.4; c.lineCap = 'round';
+                const a = -1.6 + (i - 4) * 0.19, L = 9 + (i % 3) * 4;
+                c.beginPath(); c.moveTo(0, 7);
+                c.quadraticCurveTo(Math.cos(a) * L * 0.5, 7 + Math.sin(a) * L * 0.6,
+                                   Math.cos(a) * L, 7 + Math.sin(a) * L);
+                c.stroke();
+            }
+        }));
+        DECOR.push(mk(c => {
+            c.strokeStyle = '#5a4630'; c.lineWidth = 5; c.lineCap = 'round';
+            c.beginPath(); c.moveTo(-13, 3); c.quadraticCurveTo(0, -4, 13, 2); c.stroke();
+            c.strokeStyle = 'rgba(40,32,18,0.55)'; c.lineWidth = 1.4;
+            c.beginPath(); c.moveTo(-13, 3); c.quadraticCurveTo(0, -4, 13, 2); c.stroke();
+        }));
+        DECOR.push(mk(c => {
+            ['#f6f0d8', '#e8d24a', '#f7c6d8'].forEach((col, k) => {
+                c.fillStyle = col;
+                for (let i = 0; i < 4; i++) {
+                    const a = i * 1.57 + k;
+                    c.beginPath();
+                    c.arc(Math.cos(a) * (4 + k * 3), Math.sin(a) * (4 + k * 3), 2.1, 0, Math.PI * 2);
+                    c.fill();
+                }
+            });
+        }));
+    }
+    function hash2(x, y) {
+        let h = (x * 73856093) ^ (y * 19349663);
+        h = (h ^ (h >>> 13)) >>> 0;
+        return h / 4294967296;
+    }
+
+    /* ==================== networking ==================== */
+    function statusText(s) { const e = $('battleStatus'); if (e) e.textContent = s; }
+
+    function connect() {
+        disconnect();
+        const name = ($('brName').value || 'Snake').slice(0, 14);
+        let addr = ($('brUrl').value || 'localhost:8080').trim();
+        try { localStorage.setItem('serpentName', name);
+              localStorage.setItem('serpentArena', addr); } catch (e) { }
+        addr = addr.replace(/^wss?:\/\//, '').replace(/^https?:\/\//, '').replace(/\/+$/, '');
+        const proto = location.protocol === 'https:' ? 'wss://' : 'ws://';
+        statusText('connecting…');
+        let ws;
+        try { ws = new WebSocket(proto + addr); }
+        catch (e) { statusText('that address does not look right'); return; }
+        B.ws = ws;
+
+        ws.onopen = () => {
+            statusText('joining…');
+            ws.send(JSON.stringify({ t: 'join', name: name, species: species,
+                                     skin: species === 'custom' ? skin : null }));
+        };
+        ws.onmessage = ev => {
+            let m; try { m = JSON.parse(ev.data); } catch (e) { return; }
+            if (m.t === 'welcome') {
+                B.id = m.id; B.world = { w: m.w, h: m.h }; B.tickMs = m.tick;
+                B.joined = true;
+                B.camX = m.w / 2; B.camY = m.h / 2;
+                statusText('');
+                show(joinPanel, false); show(deathPanel, false);
+                $('brWho').textContent = name + ' · ' + (SPECIES[species] || SPECIES.grassSnake).name;
+                announce('Joined the arena');
+            } else if (m.t === 'state') {
+                B.prev = B.cur; B.cur = m; B.curAt = performance.now();
+                B.you = m.you; B.lb = m.lb; B.alive = m.alive; B.blips = m.m;
+                updateHud();
+            } else if (m.t === 'died') {
+                B.flash = 0.7;
+                $('brCause').textContent = m.cause.charAt(0).toUpperCase() + m.cause.slice(1) + '.';
+                $('brLevel').textContent = m.level;
+                $('brScore').textContent = m.score;
+                $('brKills').textContent = m.kills;
+                show(deathPanel, true);
+                announce(m.cause);
+            } else if (m.t === 'pickup') {
+                announce(m.kind === 'shield' ? 'Shield up' : 'Frenzy');
+            } else if (m.t === 'feast') {
+                feast = { label: (PREY[m.kind] || {}).label || m.kind, grow: m.grow, t: 0 };
+                window.__lastFeast = m.kind;
+                announce('You took down a ' + feast.label);
+            }
+        };
+        ws.onclose = () => {
+            B.joined = false;
+            statusText('disconnected — is the arena running?');
+            show(deathPanel, false);
+            show(joinPanel, true);
+        };
+        ws.onerror = () => statusText('could not reach that arena');
+    }
+
+    function disconnect() {
+        if (B.ws) { try { B.ws.onclose = null; B.ws.close(); } catch (e) { } B.ws = null; }
+        B.prev = B.cur = null; B.you = null; B.joined = false;
+    }
+    const sendMsg = o => { if (B.ws && B.ws.readyState === 1) B.ws.send(JSON.stringify(o)); };
+
+    /* ==================== interpolation ====================
+       Segment i moves into where segment i-1 was, so lerping index against
+       index between two snapshots gives the body sliding forward. */
+    function lerpSnakes(t) {
+        const out = [];
+        if (!B.cur) return out;
+        const prevById = {};
+        if (B.prev) for (const s of B.prev.s) prevById[s.id] = s;
+        for (const s of B.cur.s) {
+            const p = prevById[s.id];
+            const n = s.b.length >> 1;
+            const pts = new Array(n);
+            for (let i = 0; i < n; i++) {
+                let x = s.b[i * 2], y = s.b[i * 2 + 1];
+                if (p && i * 2 + 1 < p.b.length) {
+                    const px = p.b[i * 2], py = p.b[i * 2 + 1];
+                    // a big jump means a respawn — do not slide across the map
+                    if (Math.abs(px - x) <= 2 && Math.abs(py - y) <= 2) {
+                        x = px + (x - px) * t; y = py + (y - py) * t;
+                    }
+                }
+                pts[i] = { x: x, y: y };
+            }
+            out.push({ s: s, pts: pts });
+        }
+        return out;
+    }
+
+    /* ==================== rendering ==================== */
+    const PREY_ORDER = PREY_WIRE;
+
+    function draw() {
+        const now = performance.now();
+        const t = Math.max(0, Math.min(1, (now - B.curAt) / B.tickMs));
+        const snakes = lerpSnakes(t);
+
+        const me = snakes.find(s => s.s.me);
+        if (me && me.pts.length) {
+            B.camX += (me.pts[0].x - B.camX) * 0.32;
+            B.camY += (me.pts[0].y - B.camY) * 0.32;
+        }
+        const halfCells = HALF / CELL;
+        B.camX = Math.max(halfCells, Math.min(B.world.w - halfCells, B.camX));
+        B.camY = Math.max(halfCells, Math.min(B.world.h - halfCells, B.camY));
+        const sx = wx => (wx - B.camX) * CELL + HALF;
+        const sy = wy => (wy - B.camY) * CELL + HALF;
+
+        buildGround(); buildDecor();
+        ctx.save();
+        ctx.fillStyle = pattern;
+        const ox = ((B.camX * CELL) % CANVAS + CANVAS) % CANVAS;
+        const oy = ((B.camY * CELL) % CANVAS + CANVAS) % CANVAS;
+        ctx.translate(-ox, -oy);
+        ctx.fillRect(0, 0, CANVAS * 2, CANVAS * 2);
+        ctx.restore();
+
+        const x0 = Math.floor(B.camX - halfCells) - 1, x1 = Math.ceil(B.camX + halfCells) + 1;
+        const y0 = Math.floor(B.camY - halfCells) - 1, y1 = Math.ceil(B.camY + halfCells) + 1;
+        for (let wy = y0; wy <= y1; wy++)
+            for (let wx = x0; wx <= x1; wx++) {
+                if (hash2(wx, wy) > 0.05) continue;
+                const d = DECOR[Math.floor(hash2(wx + 7, wy - 3) * 997) % DECOR.length];
+                ctx.drawImage(d, sx(wx + 0.5) - 22, sy(wy + 0.5) - 22);
+            }
+
+        drawWalls(sx, sy, x0, x1, y0, y1);
+
+        if (B.cur) {
+            const f = B.cur.f;
+            for (let i = 0; i < f.length; i += 3) {
+                const kind = PREY_ORDER[f[i + 2]] || 'APPLE';
+                const fx = sx(f[i] + 0.5), fy = sy(f[i + 1] + 0.5);
+                if (PREY[kind].rare) drawPrizeHalo(fx, fy, PREY[kind].r);
+                drawPreySprite(ctx, fx, fy, kind, CELL * 0.5 * (PREY[kind].r / 0.7));
+            }
+            const pw = B.cur.p;
+            for (let i = 0; i < pw.length; i += 3)
+                drawPower(sx(pw[i] + 0.5), sy(pw[i + 1] + 0.5), pw[i + 2] === 0 ? 'shield' : 'frenzy');
+        }
+
+        const detailed = snakes.length <= 4;
+        for (const s of snakes) {
+            if (s.pts.length < 2) continue;
+            const pts = s.pts.map(p => ({ x: sx(p.x + 0.5), y: sy(p.y + 0.5) }));
+            // the more you have eaten, the thicker you are
+            const bw = CELL * (0.60 + Math.min(0.80, s.s.lv * 0.05));
+            const key = SPECIES[s.s.sp] ? s.s.sp : 'grassSnake';
+            if (s.s.sh > 0) drawShield(pts, bw);
+            renderSnake(ctx, [pts], key, bw, frame, {
+                simple: !(s.s.me || detailed),
+                undulation: { amp: bw * 0.34, lambda: bw * 5.2,
+                              travelled: now * 0.05 + s.s.id * 37,
+                              rampHead: bw * 1.4, rampTail: bw * 0.9 }
+            });
+            if (s.s.fr > 0) drawFrenzy(pts, bw);
+            drawTag(pts[0], s.s, bw);
+        }
+
+        if (B.flash > 0) {
+            ctx.save();
+            ctx.globalAlpha = B.flash;
+            ctx.fillStyle = '#8e1206';
+            ctx.fillRect(0, 0, CANVAS, CANVAS);
+            ctx.restore();
+            B.flash = Math.max(0, B.flash - 0.02);
+        }
+
+        drawMinimap();
+        drawOverlayHud();
+        drawFeast();
+    }
+
+    function drawWalls(sx, sy, x0, x1, y0, y1) {
+        const W = B.world.w, H = B.world.h;
+        for (let wy = y0; wy <= y1; wy++)
+            for (let wx = x0; wx <= x1; wx++) {
+                if (!(wx < 1 || wy < 1 || wx >= W - 1 || wy >= H - 1)) continue;
+                const px = sx(wx), py = sy(wy);
+                const g = ctx.createLinearGradient(px, py, px + CELL, py + CELL);
+                g.addColorStop(0, '#8d8a77'); g.addColorStop(1, '#535045');
+                ctx.fillStyle = g;
+                ctx.fillRect(px, py, CELL + 1, CELL + 1);
+                ctx.fillStyle = 'rgba(255,255,255,0.13)';
+                ctx.fillRect(px, py, CELL, 3);
+                ctx.strokeStyle = 'rgba(0,0,0,0.42)';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(px + 0.5, py + 0.5, CELL, CELL);
+            }
+    }
+
+    /* Big game gets a ring so it reads as a prize from across the plain, and
+       so a fawn is something you go after rather than stumble on. */
+    function drawPrizeHalo(x, y, r) {
+        const rad = CELL * (0.9 + r * 0.7);
+        const pulse = 0.55 + 0.45 * Math.sin(frame * 0.07 + x * 0.02);
+        const g = ctx.createRadialGradient(x, y, rad * 0.2, x, y, rad);
+        g.addColorStop(0, 'rgba(214,171,73,' + (0.20 * pulse).toFixed(3) + ')');
+        g.addColorStop(1, 'rgba(214,171,73,0)');
+        ctx.fillStyle = g;
+        ctx.beginPath(); ctx.arc(x, y, rad, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = 'rgba(214,171,73,' + (0.30 + 0.25 * pulse).toFixed(2) + ')';
+        ctx.lineWidth = 1.6;
+        ctx.beginPath(); ctx.arc(x, y, rad * 0.72, 0, Math.PI * 2); ctx.stroke();
+    }
+
+    function drawPower(x, y, kind) {
+        const pulse = 0.6 + 0.4 * Math.sin(frame * 0.11 + x * 0.01);
+        const col = kind === 'shield' ? '#6fd8ff' : '#ff9a3c';
+        const g = ctx.createRadialGradient(x, y, 0, x, y, CELL * 1.15);
+        g.addColorStop(0, rgba(col, 0.36 * pulse));
+        g.addColorStop(1, rgba(col, 0));
+        ctx.fillStyle = g;
+        ctx.beginPath(); ctx.arc(x, y, CELL * 1.15, 0, Math.PI * 2); ctx.fill();
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(frame * 0.018);
+        ctx.beginPath();
+        for (let i = 0; i < 6; i++) {
+            const a = (i / 6) * Math.PI * 2, r = CELL * 0.42;
+            if (i === 0) ctx.moveTo(Math.cos(a) * r, Math.sin(a) * r);
+            else ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+        }
+        ctx.closePath();
+        ctx.fillStyle = rgba(col, 0.32);
+        ctx.fill();
+        ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.stroke();
+        ctx.restore();
+        ctx.fillStyle = col;
+        ctx.font = 'bold 15px ui-monospace, Menlo, monospace';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(kind === 'shield' ? 'S' : 'F', x, y + 1);
+        ctx.textBaseline = 'alphabetic';
+    }
+
+    function drawShield(pts, bw) {
+        ctx.save();
+        ctx.strokeStyle = 'rgba(111,216,255,' + (0.30 + 0.16 * Math.sin(frame * 0.16)).toFixed(2) + ')';
+        ctx.lineWidth = bw + 13;
+        ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+        ctx.beginPath();
+        ctx.moveTo(pts[0].x, pts[0].y);
+        for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+        ctx.stroke();
+        ctx.restore();
+    }
+
+    function drawFrenzy(pts, bw) {
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.strokeStyle = 'rgba(255,150,50,0.20)';
+        ctx.lineWidth = bw * 0.75;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(pts[0].x, pts[0].y);
+        for (let i = 1; i < Math.min(pts.length, 16); i++) ctx.lineTo(pts[i].x, pts[i].y);
+        ctx.stroke();
+        ctx.restore();
+    }
+
+    function drawTag(head, s, bw) {
+        ctx.save();
+        ctx.font = '600 12px "Iowan Old Style", Georgia, serif';
+        ctx.textAlign = 'center';
+        const label = s.n + '  L' + s.lv;
+        const w = ctx.measureText(label).width + 16;
+        const y = head.y - bw * 0.75 - 12;
+        ctx.fillStyle = 'rgba(8,9,7,0.66)';
+        ctx.fillRect(head.x - w / 2, y - 13, w, 18);
+        ctx.strokeStyle = s.me ? 'rgba(214,171,73,0.7)' : 'rgba(214,171,73,0.22)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(head.x - w / 2 + 0.5, y - 12.5, w, 18);
+        ctx.fillStyle = s.me ? '#d6ab49' : '#e6e0d2';
+        ctx.fillText(label, head.x, y);
+        ctx.restore();
+    }
+
+    function drawMinimap() {
+        const S = 158, pad = 12, x = CANVAS - S - pad, y = pad;
+        ctx.save();
+        ctx.fillStyle = 'rgba(8,9,7,0.66)';
+        ctx.fillRect(x, y, S, S);
+        ctx.strokeStyle = 'rgba(214,171,73,0.5)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(x + 0.5, y + 0.5, S, S);
+        const k = S / B.world.w;
+        const vw = (CANVAS / CELL) * k;
+        ctx.strokeStyle = 'rgba(255,255,255,0.30)';
+        ctx.strokeRect(x + B.camX * k - vw / 2, y + B.camY * k - vw / 2, vw, vw);
+        const big = (B.cur && B.cur.big) || [];
+        for (let i = 0; i < big.length; i += 2) {
+            const bx = x + big[i] * k, by = y + big[i + 1] * k;
+            const pulse = 0.5 + 0.5 * Math.sin(frame * 0.08 + i);
+            ctx.fillStyle = 'rgba(214,171,73,' + (0.45 + 0.4 * pulse).toFixed(2) + ')';
+            ctx.beginPath(); ctx.arc(bx, by, 2.6, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = 'rgba(214,171,73,' + (0.30 * pulse).toFixed(2) + ')';
+            ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.arc(bx, by, 5 + pulse * 3, 0, Math.PI * 2); ctx.stroke();
+        }
+        const m = B.blips || [];
+        for (let i = 0; i < m.length; i += 3) {
+            const mine = m[i + 2] === 1;
+            ctx.fillStyle = mine ? '#d6ab49' : '#d4573a';
+            ctx.beginPath();
+            ctx.arc(x + m[i] * k, y + m[i + 1] * k, mine ? 3.6 : 1.9, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        ctx.fillStyle = 'rgba(242,236,224,0.5)';
+        ctx.font = '500 9px ui-monospace, Menlo, monospace';
+        ctx.textAlign = 'left';
+        ctx.fillText(B.world.w + '×' + B.world.h, x + 5, y + S - 5);
+        ctx.restore();
+    }
+
+    function drawOverlayHud() {
+        const pad = 12;
+        ctx.save();
+        ctx.textAlign = 'left';
+        const rows = B.lb || [];
+        const bh = 22 + rows.length * 16;
+        ctx.fillStyle = 'rgba(8,9,7,0.62)';
+        ctx.fillRect(pad, pad, 190, bh);
+        ctx.strokeStyle = 'rgba(214,171,73,0.4)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(pad + 0.5, pad + 0.5, 190, bh);
+        ctx.fillStyle = '#d6ab49';
+        ctx.font = '500 10px ui-monospace, Menlo, monospace';
+        ctx.fillText('ARENA · ' + B.alive + ' ALIVE', pad + 8, pad + 15);
+        rows.forEach((r, i) => {
+            ctx.fillStyle = r.id === B.id ? '#d6ab49' : (r.alive ? '#e6e0d2' : 'rgba(230,224,210,0.32)');
+            ctx.font = '500 11px ui-monospace, Menlo, monospace';
+            ctx.fillText((i + 1) + '. ' + (r.name.length > 10 ? r.name.slice(0, 10) : r.name),
+                         pad + 8, pad + 33 + i * 16);
+            ctx.textAlign = 'right';
+            ctx.fillText('L' + r.lv + ' · ' + r.sc, pad + 182, pad + 33 + i * 16);
+            ctx.textAlign = 'left';
+        });
+
+        if (B.you && B.you.alive) {
+            let ex = pad;
+            const by = CANVAS - pad - 34;
+            if (B.you.sh > 0) ex = chip(ex, by, 'SHIELD', B.you.sh, 8000, '#6fd8ff');
+            if (B.you.fr > 0) chip(ex, by, 'FRENZY', B.you.fr, 7000, '#ff9a3c');
+        }
+        ctx.restore();
+    }
+
+    function drawFeast() {
+        if (!feast) return;
+        feast.t++;
+        const IN = 10, HOLD = 62, OUT = 26;
+        let a = 1;
+        if (feast.t < IN) a = feast.t / IN;
+        else if (feast.t > IN + HOLD) a = 1 - (feast.t - IN - HOLD) / OUT;
+        if (feast.t > IN + HOLD + OUT) { feast = null; return; }
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, Math.min(1, a));
+        ctx.textAlign = 'center';
+        const cy = CANVAS * 0.30;
+        ctx.fillStyle = '#d6ab49';
+        ctx.font = '500 11px ui-monospace, Menlo, monospace';
+        ctx.fillText('BIG GAME', CANVAS / 2, cy - 22);
+        ctx.fillStyle = '#f2ece0';
+        ctx.font = '600 32px "Iowan Old Style", Georgia, serif';
+        ctx.fillText(feast.label, CANVAS / 2, cy + 10);
+        ctx.fillStyle = 'rgba(127,216,160,0.9)';
+        ctx.font = '600 14px ui-monospace, Menlo, monospace';
+        ctx.fillText('+' + feast.grow + ' LENGTH', CANVAS / 2, cy + 32);
+        ctx.restore();
+    }
+
+    function chip(x, y, label, ms, full, col) {
+        const w = 104;
+        ctx.fillStyle = 'rgba(8,9,7,0.66)';
+        ctx.fillRect(x, y, w, 34);
+        ctx.strokeStyle = rgba(col, 0.65);
+        ctx.lineWidth = 1;
+        ctx.strokeRect(x + 0.5, y + 0.5, w, 34);
+        ctx.fillStyle = col;
+        ctx.font = '600 10px ui-monospace, Menlo, monospace';
+        ctx.textAlign = 'left';
+        ctx.fillText(label, x + 9, y + 15);
+        ctx.fillStyle = rgba(col, 0.22);
+        ctx.fillRect(x + 9, y + 21, w - 18, 5);
+        ctx.fillStyle = col;
+        ctx.fillRect(x + 9, y + 21, (w - 18) * Math.max(0, Math.min(1, ms / full)), 5);
+        return x + w + 8;
+    }
+
+    /* ==================== HUD ==================== */
+    function updateHud() {
+        const y = B.you;
+        $('brHudLevel').textContent = y && y.alive ? y.lv : '—';
+        $('brHudLen').textContent = y && y.alive ? y.len : '—';
+        $('brHudKills').textContent = y ? y.kills : '—';
+        $('brAlive').textContent = B.alive;
+        const lead = (B.lb && B.lb[0]) ? B.lb[0].lv : 1;
+        const mine = y && y.alive ? y.lv : 0;
+        $('brFill').style.width = Math.min(100, (mine / Math.max(1, lead)) * 100).toFixed(1) + '%';
+    }
+
+    /* ==================== input ==================== */
+    // 0 right, 1 down, 2 left, 3 up — matching the server's DIRS
+    const KEYS = {
+        ArrowRight: 0, ArrowDown: 1, ArrowLeft: 2, ArrowUp: 3,
+        d: 0, s: 1, a: 2, w: 3, D: 0, S: 1, A: 2, W: 3
+    };
+    document.addEventListener('keydown', e => {
         if (e.code === 'Space') {
             e.preventDefault();
-            if (gameState === 'start') beginAt(parseInt(levelPick && levelPick.value, 10) || 1);
-            else if (gameState === 'dead') retryLevel();
-            else if (gameState === 'cleared') { /* the transition drives itself */ }
-            else togglePause();
+            if (deathPanel.classList.contains('show')) { sendMsg({ t: 'respawn' }); show(deathPanel, false); }
+            else if (joinPanel.classList.contains('show')) connect();
             return;
         }
-        if (gameState !== 'playing') return;
-        const m = KEYMAP[e.key];
-        if (m) { e.preventDefault(); turn(m[0], m[1]); }
+        if (!B.joined) return;
+        const d = KEYS[e.key];
+        if (d !== undefined) { e.preventDefault(); sendMsg({ t: 'dir', d: d }); }
     });
 
-    canvas.addEventListener('touchstart', function (e) {
-        touchStartX = e.touches[0].clientX; touchStartY = e.touches[0].clientY;
+    let tsx = 0, tsy = 0;
+    canvas.addEventListener('touchstart', e => {
+        tsx = e.touches[0].clientX; tsy = e.touches[0].clientY;
+    }, { passive: true });
+    canvas.addEventListener('touchend', e => {
+        const dx = e.changedTouches[0].clientX - tsx, dy = e.changedTouches[0].clientY - tsy;
+        if (Math.abs(dx) < 26 && Math.abs(dy) < 26) return;
+        sendMsg({ t: 'dir', d: Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 0 : 2) : (dy > 0 ? 1 : 3) });
     }, { passive: true });
 
-    canvas.addEventListener('touchend', function (e) {
-        if (!touchStartX && !touchStartY) return;
-        const dx = e.changedTouches[0].clientX - touchStartX;
-        const dy = e.changedTouches[0].clientY - touchStartY;
-        touchStartX = touchStartY = 0;
-        if (Math.abs(dx) < SWIPE_THRESHOLD && Math.abs(dy) < SWIPE_THRESHOLD) {
-            if (gameState === 'start') beginAt(parseInt(levelPick && levelPick.value, 10) || 1);
-            else if (gameState === 'dead') retryLevel();
-            return;
+    $('brJoin').addEventListener('click', connect);
+    $('brRejoin').addEventListener('click', () => {
+        if (B.joined) { show(deathPanel, false); sendMsg({ t: 'respawn' }); }
+        else { show(joinPanel, true); }
+    });
+    $('brRespawn').addEventListener('click', () => { show(deathPanel, false); sendMsg({ t: 'respawn' }); });
+    $('brQuit').addEventListener('click', () => {
+        disconnect(); show(deathPanel, false); show(joinPanel, true); statusText('');
+    });
+
+    /* ==================== boot ==================== */
+    buildSpeciesChips();
+    buildGround(); buildDecor();
+    (function loop() {
+        frame++;
+        if (B.cur) draw();
+        else {
+            // an idle arena view behind the join panel, so the page is never blank
+            buildGround();
+            ctx.save();
+            ctx.fillStyle = pattern;
+            ctx.translate(-((frame * 0.25) % CANVAS), 0);
+            ctx.fillRect(0, 0, CANVAS * 2, CANVAS);
+            ctx.restore();
         }
-        if (gameState !== 'playing') return;
-        if (Math.abs(dx) > Math.abs(dy)) turn(dx > 0 ? 1 : -1, 0);
-        else turn(0, dy > 0 ? 1 : -1);
-    }, { passive: true });
+        raf = requestAnimationFrame(loop);
+    })();
 
-    startBtn.addEventListener('click', function () {
-        if (gameState === 'start') beginAt(parseInt(levelPick && levelPick.value, 10) || 1);
-        else if (gameState === 'dead') retryLevel();
-    });
-    pauseBtn.addEventListener('click', togglePause);
-    restartBtn.addEventListener('click', toMenu);
-    if (retryBtn) retryBtn.addEventListener('click', retryLevel);
-    if (continueBtn) continueBtn.addEventListener('click', function () {
-        beginAt(parseInt(levelPick.value, 10) || furthest);
-    });
-    if (newGameBtn) newGameBtn.addEventListener('click', function () { beginAt(1); });
-    if (snakeBtn) snakeBtn.addEventListener('click', openCustomiser);
-    if (useCustomBtn) useCustomBtn.addEventListener('click', function () {
-        useCustom = true; saveSkin(); refreshCustomiser(); updateHud(); draw();
-        announce('Playing as your own design');
-    });
-    if (useWildBtn) useWildBtn.addEventListener('click', function () {
-        useCustom = false; saveSkin(); refreshCustomiser(); updateHud(); draw();
-        announce('Playing as a real species');
-    });
-    if (closeCustomBtn) closeCustomBtn.addEventListener('click', closeCustomiser);
-
-
-    canvas.addEventListener('contextlost', function (e) {
-        e.preventDefault();
-        if (animationId) { cancelAnimationFrame(animationId); animationId = null; }
-        stopIdle();
-        announce('Display connection lost.');
-    }, false);
-
-    canvas.addEventListener('contextrestored', function () {
-        ctx.imageSmoothingQuality = 'high';
-        loadLevel(levelNo);
-        draw();
-        if (gameState !== 'playing') startIdle();
-        announce('Display restored.');
-    }, false);
-
-    document.addEventListener('visibilitychange', function () {
-        if (document.hidden && gameState === 'playing') togglePause();
-    });
-
-
-    /* ==================== BOOT ==================== */
-    buildLevelPicker();
-    loadLevel(furthest);
-    buildCustomiser();
-    banner = null;
-    showOverlay(startScreen, true);
-    draw();
-    startIdle();
+    window.__battle = B;
 })();
 
 </script>

@@ -1,9 +1,13 @@
-# Serpent — 150 levels across ten biomes
+# Serpent — 150 levels, ten biomes, and an arena
 
 A snake game that takes its subject seriously. 150 levels, ten biomes, ten real snake
 species and six prey animals, all drawn procedurally on HTML5 Canvas.
 
-No dependencies, no build step, no image files. Open `index.html`.
+No dependencies, no build step, no image files.
+
+- **Campaign** — open `index.html`. 150 levels, single player, nothing to install.
+- **Battle Royale** — `node server.js`, then open the address it prints. Everyone
+  on the network joins one huge shared arena.
 
 ## Design
 
@@ -30,6 +34,29 @@ throw a wave on top of it. The grid path is smoothed before it is drawn — with
 a hard cap on how far the drawn body may stray from the cells it actually
 occupies — so turns read as swept arcs rather than square corners.
 
+**Eating is an event.** The strike opens the jaw, the animal is drawn into the
+mouth over about half a second — shrinking and turning to line up with the
+throat, still being dragged along as the snake moves on — and the gulp hands
+off to a bolus in the neck.
+
+**And it stays with you.** A swallowed animal shows as a lump in the body wall
+that works its way down the snake and digests away over 35 seconds. The lump is
+a gaussian widening of the body's width profile, so the skin stretches over it
+rather than kinking around it, and the scale texture spreads with it. Bigger
+prey leaves a bigger lump — a rabbit is unmistakable, a quail egg is a slight
+swelling. The digestion clock only runs while you are playing, so pausing does
+not digest.
+
+**Wear any snake you like.** Play as whichever real species lives in the biome
+you are in, or pin one of the ten for the whole run — a black mamba in the
+snowfield if you want. Or design your own: base colour, marking colour, one of nine dorsal
+patterns, eye colour and a round or slit pupil. It is assembled from the same
+parts the wild species use — the same pattern generators, scale relief and
+cylinder shading — so a custom design is rendered by exactly the same pipeline
+and sits beside the real ones rather than looking pasted on. The preview in the
+customiser is the real renderer, digestion bulge and all. Your design is saved,
+and you can switch back to the wild species of each biome whenever you like.
+
 **Ten places, not ten palettes.** Every biome has its own terrain generator,
 seeded so a level looks the same each time you reach it. The rainforest grows
 ferns, moss beds and mossy fallen logs under canopy light shafts; the dune sea
@@ -39,6 +66,74 @@ beneath the basalt.
 **Prey that is drawn, not typed.** Six animals with procedural fur, skin and
 idle animation — a mouse that breathes and twitches its whiskers, a frog whose
 throat pulses, a rabbit that hops. Each biome draws from its own roster.
+
+## Battle Royale
+
+A second mode, in its own page, sharing the campaign's look and everything the
+renderer knows how to draw. Only the game underneath is different.
+
+```bash
+node server.js          # prints a localhost address and a LAN address
+```
+
+Open the address, pick a snake, and join. Everyone who opens it is in the same
+arena. No npm install — the WebSocket handshake and frame codec are implemented
+against RFC 6455 inside `server.js`, because adding a dependency to a project
+whose whole point is not having any would be a poor trade.
+
+**The world is 400 × 400 cells** — 160,000 of them, 256 times the area of a
+campaign board — and it is walled on every side. Nothing wraps: run into the edge and
+you are finished. The camera follows you and a minimap shows how little of it
+you can see at once.
+
+**Size is everything.** Eat to grow; every five segments is a level, and you get
+visibly thicker as you go. When two snakes touch, the higher level survives and
+the lower one dies. Equal levels kill each other. A dead snake collapses into
+prey, so a kill is worth chasing.
+
+**Big game.** The arena stocks nine animals the campaign never sees, and they
+are worth crossing the map for. Weights are steep, so with 3,600 animals in the
+world you can expect roughly five fawns, eight goat kids and fourteen dogs out
+there at any moment — spread across a map far too large to sweep, which is the
+point.
+
+| Quarry | Length | Points | Share of spawns |
+|---|---:|---:|---:|
+| Brown rat | +5 | 80 | 4.9% |
+| Hen | +7 | 140 | 2.6% |
+| Hare | +9 | 200 | 1.8% |
+| Mongoose | +11 | 260 | 1.2% |
+| Cat | +14 | 360 | 0.8% |
+| Piglet | +18 | 480 | 0.5% |
+| Dog | +23 | 650 | 0.4% |
+| Goat kid | +28 | 820 | 0.2% |
+| Fawn | +35 | 1100 | 0.15% |
+
+Cat and above are haloed in gold so you can pick them out across the plain, and
+they show as pulsing beacons on the minimap from further away than you can see
+— without that, a fawn in a 400 × 400 world would be a rumour rather than a
+target.
+
+**Two power-ups, arena only.**
+
+| | Effect | Lasts |
+|---|---|---:|
+| **Shield** | Nothing can eat you, and anything that tries dies instead | 8s |
+| **Frenzy** | Move 1.7× faster and take double growth from every animal | 7s |
+
+The server is authoritative: clients send a heading and render what they are
+sent, so nobody's browser gets to decide who ate whom. It interpolates between
+snapshots at ~11 ticks a second, which is enough to look continuous. Thirty
+bots keep a world this size inhabited when few people are on, and they hunt,
+avoid walls, and refuse to pick fights they would lose.
+
+Food lives in a 20-cell bucket index rather than one flat map, so the per-tick
+work scales with what is near a snake instead of with the size of the world. It
+is headroom, not a rescue: measured over 400 ticks with 30 snakes and 3,600
+animals, a tick costs 2.7 ms with no humans connected and 3.5 ms with eight,
+against a 90 ms budget. The unindexed version measures 3.8–4.3 ms, which also
+fits — the index simply means the next time the world grows, nothing has to
+change.
 
 ## Levels
 
@@ -96,6 +191,7 @@ the habitat — frogs dominate the bayou, lizards the desert.
 |---|---|
 | Arrow keys / WASD | Steer |
 | Space | Start · pause · resume |
+| Snake button | Choose a species, or design your own |
 | Swipe | Steer (touch) |
 | Tap | Start / restart (touch) |
 
