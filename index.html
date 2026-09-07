@@ -2631,39 +2631,63 @@ function drawDog(ctx, S, f) {
     ctx.restore();
     furPass(ctx, S, 0, S * 0.18, S * 0.50, S * 0.60, 84, '#523f27', 0.30, 0.12, 1601);
 
-    [-1, 1].forEach(sd => {                           // floppy ears
+    /* Ears hang off the SIDES of the skull, not the top. Sprouting them from
+       the crown and tilting them up is what made this read as a meerkat. */
+    [-1, 1].forEach(sd => {
         ctx.save();
-        ctx.translate(sd * S * 0.29, -S * 0.62);
-        ctx.rotate(sd * 0.46);
-        ctx.beginPath(); ctx.ellipse(0, S * 0.14, S * 0.115, S * 0.27, 0, 0, Math.PI * 2);
-        const eg = ctx.createLinearGradient(-S * 0.16, 0, S * 0.16, 0);
-        eg.addColorStop(0, '#7a5c39'); eg.addColorStop(1, '#4c3a23');
+        ctx.translate(sd * S * 0.31, -S * 0.56);
+        ctx.rotate(sd * 0.70);
+        ctx.beginPath();
+        ctx.moveTo(0, -S * 0.14);
+        ctx.quadraticCurveTo(sd * S * 0.36, S * 0.06, sd * S * 0.21, S * 0.42);
+        ctx.quadraticCurveTo(sd * S * 0.03, S * 0.30, 0, -S * 0.14);
+        const eg = ctx.createLinearGradient(0, -S * 0.14, sd * S * 0.24, S * 0.38);
+        eg.addColorStop(0, '#7a5c39'); eg.addColorStop(1, '#3c2d1b');
         ctx.fillStyle = eg; ctx.fill();
         ctx.restore();
     });
 
-    ctx.beginPath();                                  // head
-    ctx.ellipse(0, -S * 0.54, S * 0.27, S * 0.30, 0, 0, Math.PI * 2);
-    const hg = ctx.createRadialGradient(-S * 0.10, -S * 0.68, S * 0.03, 0, -S * 0.54, S * 0.42);
+    /* Skull is wide and shallow from above so the snout has somewhere to
+       project to. Drawn before the snout, which overlaps its front edge. */
+    ctx.beginPath();
+    ctx.ellipse(0, -S * 0.52, S * 0.34, S * 0.25, 0, 0, Math.PI * 2);
+    const hg = ctx.createRadialGradient(-S * 0.12, -S * 0.62, S * 0.03, 0, -S * 0.52, S * 0.44);
     hg.addColorStop(0, '#c9a271'); hg.addColorStop(1, '#5d472c');
     ctx.fillStyle = hg; ctx.fill();
 
-    ctx.beginPath();                                  // muzzle
-    ctx.ellipse(0, -S * 0.80, S * 0.145, S * 0.20, 0, 0, Math.PI * 2);
-    ctx.fillStyle = '#d4b189'; ctx.fill();
-    ctx.beginPath(); ctx.ellipse(0, -S * 0.98, S * 0.09, S * 0.07, 0, 0, Math.PI * 2);
-    ctx.fillStyle = '#1d1712'; ctx.fill();
-    ctx.strokeStyle = 'rgba(40,30,20,0.55)';
-    ctx.lineWidth = S * 0.025;
-    ctx.beginPath();
-    ctx.moveTo(0, -S * 0.92); ctx.lineTo(0, -S * 0.76);
-    ctx.moveTo(-S * 0.11, -S * 0.70); ctx.quadraticCurveTo(0, -S * 0.76, S * 0.11, -S * 0.70);
+    /* Tapered, not a tube: wide at the cheeks, narrow at the nose. Straight
+       sides read as a nozzle stuck on the face. */
+    ctx.beginPath();                                  // snout, clear of the skull
+    ctx.moveTo(-S * 0.21, -S * 0.56);
+    ctx.quadraticCurveTo(-S * 0.128, -S * 0.86, -S * 0.072, -S * 0.925);
+    ctx.quadraticCurveTo(0, -S * 0.975, S * 0.072, -S * 0.925);
+    ctx.quadraticCurveTo(S * 0.128, -S * 0.86, S * 0.21, -S * 0.56);
+    ctx.closePath();
+    const mg = ctx.createLinearGradient(-S * 0.18, 0, S * 0.18, 0);
+    mg.addColorStop(0, '#8a6743'); mg.addColorStop(0.40, '#c8a074'); mg.addColorStop(1, '#7d5c3b');
+    ctx.fillStyle = mg; ctx.fill();
+    ctx.strokeStyle = 'rgba(48,35,22,0.42)';
+    ctx.lineWidth = S * 0.018;
     ctx.stroke();
 
-    [-1, 1].forEach(sd => {
-        ctx.beginPath(); ctx.arc(sd * S * 0.135, -S * 0.60, S * 0.06, 0, Math.PI * 2);
+    ctx.beginPath();                                  // nose leather
+    ctx.moveTo(-S * 0.078, -S * 0.910);
+    ctx.quadraticCurveTo(0, -S * 0.975, S * 0.078, -S * 0.910);
+    ctx.quadraticCurveTo(0, -S * 0.825, -S * 0.078, -S * 0.910);
+    ctx.fillStyle = '#1d1712'; ctx.fill();
+
+    ctx.strokeStyle = 'rgba(45,33,21,0.5)';           // mouth
+    ctx.lineWidth = S * 0.022;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(0, -S * 0.86); ctx.lineTo(0, -S * 0.78);
+    ctx.moveTo(-S * 0.10, -S * 0.72); ctx.quadraticCurveTo(0, -S * 0.79, S * 0.10, -S * 0.72);
+    ctx.stroke();
+
+    [-1, 1].forEach(sd => {                           // eyes, out on the cheeks
+        ctx.beginPath(); ctx.arc(sd * S * 0.195, -S * 0.58, S * 0.058, 0, Math.PI * 2);
         ctx.fillStyle = '#20150c'; ctx.fill();
-        ctx.beginPath(); ctx.arc(sd * S * 0.135 - S * 0.022, -S * 0.63, S * 0.022, 0, Math.PI * 2);
+        ctx.beginPath(); ctx.arc(sd * S * 0.195 - S * 0.020, -S * 0.605, S * 0.021, 0, Math.PI * 2);
         ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.fill();
     });
     ctx.restore();
