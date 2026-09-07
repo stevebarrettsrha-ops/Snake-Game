@@ -73,6 +73,12 @@
     padding:2px 5px; border-radius:2px; font-weight:400;
   }
 
+  .badge.hold{
+    color:#e8b4a0; border-color:#e8b4a0;
+    animation:holdpulse 1.6s ease-in-out infinite;
+  }
+  @keyframes holdpulse{ 0%,100%{opacity:1} 50%{opacity:.45} }
+
   /* prey goal track */
   .goal{
     display:flex; align-items:center; gap:10px; padding:6px 12px;
@@ -268,6 +274,7 @@
     <div class="place">
       <span id="brArena">The Arena</span>
       <span class="badge" id="brEdges">Walled — no wrapping</span>
+      <span class="badge hold" id="brFrozen" hidden>Frame held · P</span>
     </div>
     <div class="who"><span id="brWho">not connected</span></div>
   </div>
@@ -331,7 +338,7 @@
   </div>
 
   <div class="foot">
-    <div class="keys"><b>Arrows</b> or <b>WASD</b> steer &nbsp;·&nbsp; grab <b>S</b> shields and <b>F</b> frenzy</div>
+    <div class="keys"><b>Arrows</b> or <b>WASD</b> steer &nbsp;·&nbsp; grab <b>S</b> shields and <b>F</b> frenzy &nbsp;·&nbsp; <b>P</b> holds the frame</div>
     <div class="btns">
       <button id="brRejoin" class="primary" aria-label="Join or rejoin the arena">Join</button>
       <a class="modelink" href="index.html" style="align-self:center">Campaign</a>
@@ -3841,6 +3848,7 @@ function setCustomSkin(cfg) {
     ctx.imageSmoothingQuality = 'high';
 
     const joinPanel = $('battleScreen'), deathPanel = $('battleDeath');
+    const freezeBadge = $('brFrozen');
     const announcer = $('game-announcer');
     const announce = m => { if (announcer) announcer.textContent = m; };
     const show = (el, on) => { if (el) el.classList.toggle('show', on); };
@@ -3896,7 +3904,8 @@ function setCustomSkin(cfg) {
         ws: null, id: 0, world: { w: 200, h: 200 }, tickMs: 90,
         prev: null, cur: null, curAt: 0,
         you: null, lb: [], alive: 0, blips: [],
-        camX: 100, camY: 100, flash: 0, joined: false
+        camX: 100, camY: 100, flash: 0, joined: false,
+        frozen: false, pendingDeath: null
     };
     let frame = 0, raf = null, feast = null;
 
@@ -4038,14 +4047,17 @@ function setCustomSkin(cfg) {
             } else if (m.t === 'state') {
                 B.prev = B.cur; B.cur = m; B.curAt = performance.now();
                 B.you = m.you; B.lb = m.lb; B.alive = m.alive; B.blips = m.m;
-                updateHud();
+                /* State keeps arriving while a frame is held — it has to, or
+                   releasing would snap from stale data — but the HUD must not
+                   advance past the picture, or a screenshot shows a board from
+                   one moment above numbers from another. */
+                if (!B.frozen) updateHud();
             } else if (m.t === 'died') {
                 B.flash = 0.7;
-                $('brCause').textContent = m.cause.charAt(0).toUpperCase() + m.cause.slice(1) + '.';
-                $('brLevel').textContent = m.level;
-                $('brScore').textContent = m.score;
-                $('brKills').textContent = m.kills;
-                show(deathPanel, true);
+                // while a frame is held, the panel would cover the picture the
+                // freeze was taken for; it waits until the freeze is released
+                if (B.frozen) B.pendingDeath = m;
+                else showDeath(m);
                 announce(m.cause);
             } else if (m.t === 'pickup') {
                 announce(m.kind === 'shield' ? 'Shield up' : 'Frenzy');
@@ -4151,6 +4163,11 @@ function setCustomSkin(cfg) {
         }
 
         const detailed = snakes.length <= 4;
+        /* Tags are collected here and painted in one pass after every body is
+           down. Drawn inline, a snake rendered later covers the tag of one
+           rendered earlier — which is exactly what happens in a fight, when
+           the two heads you most want named are on top of each other. */
+        const tags = [];
         for (const s of snakes) {
             if (s.pts.length < 2) continue;
             const pts = s.pts.map(p => ({ x: sx(p.x + 0.5), y: sy(p.y + 0.5) }));
@@ -4165,8 +4182,9 @@ function setCustomSkin(cfg) {
                               rampHead: bw * 1.4, rampTail: bw * 0.9 }
             });
             if (s.s.fr > 0) drawFrenzy(pts, bw);
-            drawTag(pts[0], s.s, bw);
+            tags.push({ head: pts[0], s: s.s, bw: bw });
         }
+        drawTags(tags);
 
         if (B.flash > 0) {
             ctx.save();
@@ -4269,20 +4287,79 @@ function setCustomSkin(cfg) {
         ctx.restore();
     }
 
-    function drawTag(head, s, bw) {
+    /* One pass over every tag: measure, keep it on the canvas, nudge it clear
+       of tags already placed, then paint. Your own tag is placed last so it
+       ends up on top of the pile when a fight puts several heads together. */
+    function showDeath(m) {
+        $('brCause').textContent = m.cause.charAt(0).toUpperCase() + m.cause.slice(1) + '.';
+        $('brLevel').textContent = m.level;
+        $('brScore').textContent = m.score;
+        $('brKills').textContent = m.kills;
+        show(deathPanel, true);
+    }
+
+    function drawTags(tags) {
         ctx.save();
         ctx.font = '600 12px "Iowan Old Style", Georgia, serif';
         ctx.textAlign = 'center';
-        const label = s.n + '  L' + s.lv;
-        const w = ctx.measureText(label).width + 16;
-        const y = head.y - bw * 0.75 - 12;
-        ctx.fillStyle = 'rgba(8,9,7,0.66)';
-        ctx.fillRect(head.x - w / 2, y - 13, w, 18);
-        ctx.strokeStyle = s.me ? 'rgba(214,171,73,0.7)' : 'rgba(214,171,73,0.22)';
-        ctx.lineWidth = 1;
-        ctx.strokeRect(head.x - w / 2 + 0.5, y - 12.5, w, 18);
-        ctx.fillStyle = s.me ? '#d6ab49' : '#e6e0d2';
-        ctx.fillText(label, head.x, y);
+
+        const ordered = tags.slice().sort((a, b) => (a.s.me ? 1 : 0) - (b.s.me ? 1 : 0));
+        const M = 4;                                   // keep this far off the edge
+
+        /* The leaderboard and minimap are painted after this pass, so a tag
+           left underneath one is simply lost. Seed the layout with both panels
+           as occupied space and tags route around them instead. */
+        const pad = 12;
+        const lbH = 22 + ((B.lb || []).length) * 16;
+        const placed = [
+            { cx: pad + 95, top: pad, w: 190, h: lbH },
+            { cx: CANVAS - 158 - pad + 79, top: pad, w: 158, h: 158 }
+        ];
+
+        for (const t of ordered) {
+            const label = t.s.n + '  L' + t.s.lv;
+            const w = ctx.measureText(label).width + 16, h = 18;
+            let cx = t.head.x;
+            let top = t.head.y - t.bw * 0.75 - 25;
+
+            // a head near an edge would otherwise push its tag off the canvas
+            cx = Math.max(w / 2 + M, Math.min(CANVAS - w / 2 - M, cx));
+
+            /* Step the tag upward past anything already placed, then flip below
+               the head if there is no room left above. */
+            const clash = (cy) => placed.some(q =>
+                Math.abs(q.cx - cx) < (q.w + w) / 2 + 2 &&
+                cy < q.top + (q.h || h) + 2 && cy + h + 2 > q.top);
+
+            // step up out of the way, then try below the head if the top is full
+            for (let guard = 0; guard < 14 && clash(top); guard++) top -= h + 3;
+            if (top < M || clash(top)) {
+                top = t.head.y + t.bw * 0.75 + 8;
+                for (let guard = 0; guard < 14 && clash(top); guard++) top += h + 3;
+            }
+            top = Math.max(M, Math.min(CANVAS - h - M, top));
+
+            placed.push({ cx: cx, top: top, w: w, h: h });
+
+            // a leader line, since the tag may no longer sit over its own head
+            const anchorY = top + (t.head.y > top ? h : 0);
+            if (Math.abs(cx - t.head.x) > 2 || Math.abs(anchorY - t.head.y) > t.bw) {
+                ctx.strokeStyle = t.s.me ? 'rgba(214,171,73,0.45)' : 'rgba(230,224,210,0.28)';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(cx, anchorY);
+                ctx.lineTo(t.head.x, t.head.y);
+                ctx.stroke();
+            }
+
+            ctx.fillStyle = 'rgba(8,9,7,0.78)';
+            ctx.fillRect(cx - w / 2, top, w, h);
+            ctx.strokeStyle = t.s.me ? 'rgba(214,171,73,0.7)' : 'rgba(214,171,73,0.30)';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(cx - w / 2 + 0.5, top + 0.5, w, h);
+            ctx.fillStyle = t.s.me ? '#d6ab49' : '#e6e0d2';
+            ctx.fillText(label, cx, top + 13);
+        }
         ctx.restore();
     }
 
@@ -4423,6 +4500,7 @@ function setCustomSkin(cfg) {
             else if (joinPanel.classList.contains('show')) connect();
             return;
         }
+        if (e.code === 'KeyP') { e.preventDefault(); toggleFreeze(); return; }
         if (!B.joined) return;
         const d = KEYS[e.key];
         if (d !== undefined) { e.preventDefault(); sendMsg({ t: 'dir', d: d }); }
@@ -4451,8 +4529,23 @@ function setCustomSkin(cfg) {
     /* ==================== boot ==================== */
     buildSpeciesChips();
     buildGround(); buildDecor();
+    /* Hold the last painted frame so it can be photographed. The arena is on
+       the server and keeps running: you are still moving, and something can
+       still eat you while the picture sits still. Unfreezing snaps to
+       whatever has happened since. */
+    function toggleFreeze() {
+        B.frozen = !B.frozen;
+        if (freezeBadge) freezeBadge.hidden = !B.frozen;   // the badge hides via [hidden], not the .show class
+        if (!B.frozen) {
+            updateHud();                                   // catch the numbers up to the live arena
+            if (B.pendingDeath) { showDeath(B.pendingDeath); B.pendingDeath = null; }
+        }
+        announce(B.frozen ? 'Frame held — the arena is still running' : 'Running');
+    }
+
     (function loop() {
         frame++;
+        if (B.frozen) { raf = requestAnimationFrame(loop); return; }
         if (B.cur) draw();
         else {
             // an idle arena view behind the join panel, so the page is never blank

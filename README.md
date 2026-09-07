@@ -192,10 +192,19 @@ the habitat — frogs dominate the bayou, lizards the desert.
 | Input | Action |
 |---|---|
 | Arrow keys / WASD | Steer |
-| Space | Start · pause · resume |
+| Space | Start · pause · resume (campaign) · dive back in (arena) |
+| P | Hold the frame (arena) |
 | Snake button | Choose a species, or design your own |
 | Swipe | Steer (touch) |
 | Tap | Start / restart (touch) |
+
+**P holds the frame** in the arena — useful for photographing a collision,
+which is otherwise over in one 90 ms tick. It freezes the canvas and the HUD
+together so the picture and the numbers agree, and it holds back the death
+panel, so a frame you caught survives even if the thing you were looking at
+kills you. It is a camera shutter, not a pause: the arena is on the server and
+keeps running, so you are still moving and can still die while the picture sits
+still. Releasing snaps to whatever has happened since.
 
 Walls kill. So does your own body. Most levels are walled in; the ones that
 leave the edges open are marked on the level card.
