@@ -26,7 +26,7 @@ const ROOT = __dirname;
 const W = 400, H = 400;              // cells — 160,000 of them, 256x the campaign board
 const TICK_MS = 90;
 const START_LEN = 6;
-const FOOD_TARGET = 3600;            // held at roughly the same density as a smaller arena
+const FOOD_TARGET = 12000;           // ~1 animal per 13 cells; below this a 400x400 world reads as empty
 const POWER_TARGET = 72;
 const BOT_TARGET = 30;               // keeps a world this size from feeling empty
 const SEG_PER_LEVEL = 5;

@@ -92,10 +92,10 @@ the lower one dies. Equal levels kill each other. A dead snake collapses into
 prey, so a kill is worth chasing.
 
 **Big game.** The arena stocks nine animals the campaign never sees, and they
-are worth crossing the map for. Weights are steep, so with 3,600 animals in the
-world you can expect roughly five fawns, eight goat kids and fourteen dogs out
-there at any moment — spread across a map far too large to sweep, which is the
-point.
+are worth crossing the map for. Weights are steep, so with 12,000 animals in
+the world you can expect roughly sixteen fawns, twenty-six goat kids and forty
+dogs out there at any moment — spread across a map far too large to sweep,
+which is the point.
 
 | Quarry | Length | Points | Share of spawns |
 |---|---:|---:|---:|
@@ -128,12 +128,13 @@ bots keep a world this size inhabited when few people are on, and they hunt,
 avoid walls, and refuse to pick fights they would lose.
 
 Food lives in a 20-cell bucket index rather than one flat map, so the per-tick
-work scales with what is near a snake instead of with the size of the world. It
-is headroom, not a rescue: measured over 400 ticks with 30 snakes and 3,600
-animals, a tick costs 2.7 ms with no humans connected and 3.5 ms with eight,
-against a 90 ms budget. The unindexed version measures 3.8–4.3 ms, which also
-fits — the index simply means the next time the world grows, nothing has to
-change.
+work scales with what is near a snake instead of with the size of the world. At
+the arena's original stocking that was headroom rather than a fix — both the
+indexed and unindexed versions ran a tick in about 4 ms. At 12,000 animals it
+earns its keep: measured over 250 ticks with 30 snakes, a tick costs 5.3 ms
+with no humans connected and 7.1 ms with eight, against a 90 ms budget, where
+the unindexed version costs 24 ms and 33 ms. Density is what made the index
+matter, not size.
 
 ## Levels
 
