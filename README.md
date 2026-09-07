@@ -109,10 +109,11 @@ which is the point.
 | Goat kid | +28 | 820 | 0.2% |
 | Fawn | +35 | 1100 | 0.15% |
 
-Cat and above are haloed in gold so you can pick them out across the plain, and
-they show as pulsing beacons on the minimap from further away than you can see
-— without that, a fawn in a 400 × 400 world would be a rumour rather than a
-target.
+Cat and above are haloed in gold so you can pick them out across the plain.
+Only goat kids and fawns get a pulsing minimap beacon, and only the nearest
+five: beacon the whole rare tier at this stocking and the minimap fills with
+thirty overlapping rings that point at nothing. Everything between cat and dog
+is found by looking, not by map.
 
 **Two power-ups, arena only.**
 

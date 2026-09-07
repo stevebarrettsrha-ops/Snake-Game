@@ -27,7 +27,7 @@ const W = 400, H = 400;              // cells — 160,000 of them, 256x the camp
 const TICK_MS = 90;
 const START_LEN = 6;
 const FOOD_TARGET = 12000;           // ~1 animal per 13 cells; below this a 400x400 world reads as empty
-const POWER_TARGET = 72;
+const POWER_TARGET = 240;            // scaled with the food, so powers stay as rare relative to prey
 const BOT_TARGET = 30;               // keeps a world this size from feeling empty
 const SEG_PER_LEVEL = 5;
 const SHIELD_MS = 8000;
@@ -41,9 +41,9 @@ const PREY_KINDS = ['APPLE', 'EGG', 'MOUSE', 'FROG', 'LIZARD', 'RABBIT',
                     'DOG', 'GOAT', 'FAWN'];
 
 /* What the arena stocks. `w` is a relative spawn weight, so the big game is
-   genuinely uncommon: with ~950 animals in the world you can expect roughly
-   one fawn and a couple of goats out there at any moment, which is what makes
-   crossing the map for one worth doing. */
+   genuinely uncommon: with 12,000 animals in the world you can expect roughly
+   sixteen fawns and twenty-six goats out there at any moment, which is what
+   makes crossing the map for one worth doing. */
 const ARENA_FOOD = [
     { k: 'APPLE',    w: 300,  grow: 1,  pts: 10   },
     { k: 'EGG',      w: 150,  grow: 1,  pts: 15   },
@@ -62,6 +62,9 @@ const ARENA_FOOD = [
     { k: 'FAWN',     w: 1.5,  grow: 35, pts: 1100 }
 ];
 const RARE = { CAT: 1, PIGLET: 1, DOG: 1, GOAT: 1, FAWN: 1 };
+/* Which of those are worth a minimap beacon, as opposed to just a gold halo
+   once you can see them. */
+const BEACON = { GOAT: 1, FAWN: 1 };
 const ARENA_TOTAL = ARENA_FOOD.reduce((a, b) => a + b.w, 0);
 const PREY_GROWTH = {}, PREY_POINTS = {};
 ARENA_FOOD.forEach(a => { PREY_GROWTH[a.k] = a.grow; PREY_POINTS[a.k] = a.pts; });
@@ -89,10 +92,11 @@ const key = (x, y) => x + ',' + y;
 const rnd = n => Math.floor(Math.random() * n);
 
 /* Food lives in a bucket grid as well as the flat map. Every player's view,
-   every prize scan and every bot's search used to walk the whole food
-   collection; at 3,600 animals and thirty-odd snakes that is millions of
-   comparisons a second and the tick would not hold. Bucketing turns each of
-   those into a handful of cells. */
+   every prize scan and every bot's search would otherwise walk the whole food
+   collection. At 3,600 animals that was survivable either way — both versions
+   ran a tick in about 4 ms. At 12,000 it is not: the flat scan costs 24 ms a
+   tick idle and 33 ms with eight viewers, against 5.3 and 7.1 bucketed, on a
+   90 ms budget. Density is what makes this worth having, not world size. */
 const BUCKET = 20;
 const BCOLS = Math.ceil(W / BUCKET);
 const foodBuckets = new Map();
@@ -519,13 +523,24 @@ function viewFor(p) {
     const blips = [];
     players.forEach(q => { if (q.alive) blips.push(q.body[0].x, q.body[0].y, q.id === p.id ? 1 : 0); });
 
-    // Rare quarry within a wider radius than you can see, so big game is
-    // findable at all. Without this a fawn in a 200x200 world is a rumour.
+    /* Top-tier quarry within a wider radius than you can see, so big game is
+       findable at all — without this a fawn out in 160,000 cells is a rumour.
+       Only the two best animals get a beacon, and only the nearest few: at
+       12,000 animals the whole RARE set inside this radius is ~30 of them, and
+       thirty overlapping rings is a gold smear that points at nothing. Cats,
+       piglets and dogs still wear their gold halo in the world, so they are
+       spotted by looking rather than by map. */
     const PRIZE_RANGE = 70;
-    const prizes = [];
+    const PRIZE_MAX = 5;
+    const found = [];
     forEachFoodNear(head.x, head.y, PRIZE_RANGE, f => {
-        if (RARE[f.kind]) prizes.push(f.x, f.y);
+        if (!BEACON[f.kind]) return;
+        const d = Math.abs(f.x - head.x) + Math.abs(f.y - head.y);
+        found.push({ x: f.x, y: f.y, d: d });
     });
+    found.sort((a, b) => a.d - b.d);
+    const prizes = [];
+    for (let i = 0; i < found.length && i < PRIZE_MAX; i++) prizes.push(found[i].x, found[i].y);
 
     return {
         t: 'state', tick: Date.now(),
