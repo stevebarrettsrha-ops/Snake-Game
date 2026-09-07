@@ -34,9 +34,46 @@ const SHIELD_MS = 8000;
 const FRENZY_MS = 7000;
 const RESPAWN_CLEAR = 4;             // cells that must be free around a spawn
 
-const PREY_KINDS = ['APPLE', 'EGG', 'MOUSE', 'FROG', 'LIZARD', 'RABBIT'];
-const PREY_GROWTH = { APPLE: 1, EGG: 1, MOUSE: 2, FROG: 2, LIZARD: 3, RABBIT: 4 };
-const PREY_POINTS = { APPLE: 10, EGG: 15, MOUSE: 20, FROG: 30, LIZARD: 40, RABBIT: 60 };
+/* Wire order for food kinds — the client holds the same list and the index is
+   what goes over the socket, so the two must not drift. */
+const PREY_KINDS = ['APPLE', 'EGG', 'MOUSE', 'FROG', 'LIZARD', 'RABBIT',
+                    'RAT', 'CHICKEN', 'HARE', 'MONGOOSE', 'CAT', 'PIGLET',
+                    'DOG', 'GOAT', 'FAWN'];
+
+/* What the arena stocks. `w` is a relative spawn weight, so the big game is
+   genuinely uncommon: with ~950 animals in the world you can expect roughly
+   one fawn and a couple of goats out there at any moment, which is what makes
+   crossing the map for one worth doing. */
+const ARENA_FOOD = [
+    { k: 'APPLE',    w: 300,  grow: 1,  pts: 10   },
+    { k: 'EGG',      w: 150,  grow: 1,  pts: 15   },
+    { k: 'MOUSE',    w: 240,  grow: 2,  pts: 20   },
+    { k: 'FROG',     w: 130,  grow: 2,  pts: 30   },
+    { k: 'LIZARD',   w: 100,  grow: 3,  pts: 40   },
+    { k: 'RABBIT',   w: 70,   grow: 4,  pts: 60   },
+    { k: 'RAT',      w: 55,   grow: 5,  pts: 80   },
+    { k: 'CHICKEN',  w: 30,   grow: 7,  pts: 140  },
+    { k: 'HARE',     w: 20,   grow: 9,  pts: 200  },
+    { k: 'MONGOOSE', w: 14,   grow: 11, pts: 260  },
+    { k: 'CAT',      w: 9,    grow: 14, pts: 360  },
+    { k: 'PIGLET',   w: 6,    grow: 18, pts: 480  },
+    { k: 'DOG',      w: 4.5,  grow: 23, pts: 650  },
+    { k: 'GOAT',     w: 2.5,  grow: 28, pts: 820  },
+    { k: 'FAWN',     w: 1.5,  grow: 35, pts: 1100 }
+];
+const RARE = { CAT: 1, PIGLET: 1, DOG: 1, GOAT: 1, FAWN: 1 };
+const ARENA_TOTAL = ARENA_FOOD.reduce((a, b) => a + b.w, 0);
+const PREY_GROWTH = {}, PREY_POINTS = {};
+ARENA_FOOD.forEach(a => { PREY_GROWTH[a.k] = a.grow; PREY_POINTS[a.k] = a.pts; });
+
+function rollFood() {
+    let r = Math.random() * ARENA_TOTAL;
+    for (let i = 0; i < ARENA_FOOD.length; i++) {
+        r -= ARENA_FOOD[i].w;
+        if (r <= 0) return ARENA_FOOD[i].k;
+    }
+    return 'APPLE';
+}
 const DIRS = [{ x: 1, y: 0 }, { x: 0, y: 1 }, { x: -1, y: 0 }, { x: 0, y: -1 }];
 
 const levelOf = len => 1 + Math.floor(Math.max(0, len - START_LEN) / SEG_PER_LEVEL);
@@ -64,11 +101,8 @@ function freeCell(margin) {
 function spawnFood() {
     while (food.size < FOOD_TARGET) {
         const c = freeCell();
-        // rarer animals are worth more and grow you faster
-        const r = Math.random();
-        const kind = r < 0.34 ? 'APPLE' : r < 0.56 ? 'EGG' : r < 0.76 ? 'MOUSE'
-                   : r < 0.89 ? 'FROG' : r < 0.97 ? 'LIZARD' : 'RABBIT';
-        food.set(key(c.x, c.y), { x: c.x, y: c.y, kind: kind });
+        // rarer animals are worth more and grow you a great deal faster
+        food.set(key(c.x, c.y), { x: c.x, y: c.y, kind: rollFood() });
     }
 }
 
@@ -292,9 +326,11 @@ function stepOnce(list, now) {
         if (f) {
             food.delete(fk);
             const mult = now < p.frenzyUntil ? 2 : 1;
-            p.grow += PREY_GROWTH[f.kind] * mult;
+            const gained = PREY_GROWTH[f.kind] * mult;
+            p.grow += gained;
             p.score += PREY_POINTS[f.kind] * mult;
             p.lastAte = now;
+            if (RARE[f.kind] && p.ws) send(p.ws, { t: 'feast', kind: f.kind, grow: gained });
         }
         const pw = powers.get(fk);
         if (pw) {
@@ -439,13 +475,23 @@ function viewFor(p) {
     const blips = [];
     players.forEach(q => { if (q.alive) blips.push(q.body[0].x, q.body[0].y, q.id === p.id ? 1 : 0); });
 
+    // Rare quarry within a wider radius than you can see, so big game is
+    // findable at all. Without this a fawn in a 200x200 world is a rumour.
+    const PRIZE_RANGE = 52;
+    const prizes = [];
+    food.forEach(f => {
+        if (!RARE[f.kind]) return;
+        if (Math.abs(f.x - head.x) > PRIZE_RANGE || Math.abs(f.y - head.y) > PRIZE_RANGE) return;
+        prizes.push(f.x, f.y);
+    });
+
     return {
         t: 'state', tick: Date.now(),
         you: { id: p.id, alive: p.alive, lv: p.alive ? levelOf(p.body.length) : 0,
                len: p.alive ? p.body.length : 0, score: p.score, kills: p.kills,
                sh: now < p.shieldUntil ? p.shieldUntil - now : 0,
                fr: now < p.frenzyUntil ? p.frenzyUntil - now : 0 },
-        s: snakes, f: fd, p: pw, m: blips,
+        s: snakes, f: fd, p: pw, m: blips, big: prizes,
         alive: aliveCount(), lb: leaderboard()
     };
 }

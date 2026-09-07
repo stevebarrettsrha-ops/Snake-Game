@@ -91,6 +91,28 @@ visibly thicker as you go. When two snakes touch, the higher level survives and
 the lower one dies. Equal levels kill each other. A dead snake collapses into
 prey, so a kill is worth chasing.
 
+**Big game.** The arena stocks nine animals the campaign never sees, and they
+are worth crossing the map for. Weights are steep, so with ~950 animals in the
+world you can expect roughly one fawn, two goat kids and five dogs out there at
+any moment.
+
+| Quarry | Length | Points | Share of spawns |
+|---|---:|---:|---:|
+| Brown rat | +5 | 80 | 4.9% |
+| Hen | +7 | 140 | 2.8% |
+| Hare | +9 | 200 | 1.6% |
+| Mongoose | +11 | 260 | 1.3% |
+| Cat | +14 | 360 | 0.8% |
+| Piglet | +18 | 480 | 0.5% |
+| Dog | +23 | 650 | 0.5% |
+| Goat kid | +28 | 820 | 0.2% |
+| Fawn | +35 | 1100 | 0.15% |
+
+Cat and above are haloed in gold so you can pick them out across the plain, and
+they show as pulsing beacons on the minimap from further away than you can see
+— without that, a fawn in a 200 × 200 world would be a rumour rather than a
+target.
+
 **Two power-ups, arena only.**
 
 | | Effect | Lasts |
