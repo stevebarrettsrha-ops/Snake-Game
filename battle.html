@@ -303,7 +303,7 @@
         <div>Shield <span>8s</span></div>
         <div>Frenzy <span>7s</span></div>
         <div>Kills drop prey <span>yes</span></div>
-        <div>World <span>200×200</span></div>
+        <div>World <span>400×400</span></div>
         <div>Big game <span>rare</span></div>
         <div>A fawn is worth <span>+35</span></div>
       </div>
@@ -4263,7 +4263,7 @@ function setCustomSkin(cfg) {
     }
 
     function drawMinimap() {
-        const S = 134, pad = 12, x = CANVAS - S - pad, y = pad;
+        const S = 158, pad = 12, x = CANVAS - S - pad, y = pad;
         ctx.save();
         ctx.fillStyle = 'rgba(8,9,7,0.66)';
         ctx.fillRect(x, y, S, S);
@@ -4289,7 +4289,7 @@ function setCustomSkin(cfg) {
             const mine = m[i + 2] === 1;
             ctx.fillStyle = mine ? '#d6ab49' : '#d4573a';
             ctx.beginPath();
-            ctx.arc(x + m[i] * k, y + m[i + 1] * k, mine ? 3.4 : 2, 0, Math.PI * 2);
+            ctx.arc(x + m[i] * k, y + m[i + 1] * k, mine ? 3.6 : 1.9, 0, Math.PI * 2);
             ctx.fill();
         }
         ctx.fillStyle = 'rgba(242,236,224,0.5)';

@@ -81,8 +81,8 @@ arena. No npm install — the WebSocket handshake and frame codec are implemente
 against RFC 6455 inside `server.js`, because adding a dependency to a project
 whose whole point is not having any would be a poor trade.
 
-**The world is 200 × 200 cells** — sixty-four times the area of a campaign
-board — and it is walled on every side. Nothing wraps: run into the edge and
+**The world is 400 × 400 cells** — 160,000 of them, 256 times the area of a
+campaign board — and it is walled on every side. Nothing wraps: run into the edge and
 you are finished. The camera follows you and a minimap shows how little of it
 you can see at once.
 
@@ -92,25 +92,26 @@ the lower one dies. Equal levels kill each other. A dead snake collapses into
 prey, so a kill is worth chasing.
 
 **Big game.** The arena stocks nine animals the campaign never sees, and they
-are worth crossing the map for. Weights are steep, so with ~950 animals in the
-world you can expect roughly one fawn, two goat kids and five dogs out there at
-any moment.
+are worth crossing the map for. Weights are steep, so with 3,600 animals in the
+world you can expect roughly five fawns, eight goat kids and fourteen dogs out
+there at any moment — spread across a map far too large to sweep, which is the
+point.
 
 | Quarry | Length | Points | Share of spawns |
 |---|---:|---:|---:|
 | Brown rat | +5 | 80 | 4.9% |
-| Hen | +7 | 140 | 2.8% |
-| Hare | +9 | 200 | 1.6% |
-| Mongoose | +11 | 260 | 1.3% |
+| Hen | +7 | 140 | 2.6% |
+| Hare | +9 | 200 | 1.8% |
+| Mongoose | +11 | 260 | 1.2% |
 | Cat | +14 | 360 | 0.8% |
 | Piglet | +18 | 480 | 0.5% |
-| Dog | +23 | 650 | 0.5% |
+| Dog | +23 | 650 | 0.4% |
 | Goat kid | +28 | 820 | 0.2% |
 | Fawn | +35 | 1100 | 0.15% |
 
 Cat and above are haloed in gold so you can pick them out across the plain, and
 they show as pulsing beacons on the minimap from further away than you can see
-— without that, a fawn in a 200 × 200 world would be a rumour rather than a
+— without that, a fawn in a 400 × 400 world would be a rumour rather than a
 target.
 
 **Two power-ups, arena only.**
@@ -122,9 +123,17 @@ target.
 
 The server is authoritative: clients send a heading and render what they are
 sent, so nobody's browser gets to decide who ate whom. It interpolates between
-snapshots at ~11 ticks a second, which is enough to look continuous. Bots keep
-the arena inhabited when few people are on, and they hunt, avoid walls, and
-refuse to pick fights they would lose.
+snapshots at ~11 ticks a second, which is enough to look continuous. Thirty
+bots keep a world this size inhabited when few people are on, and they hunt,
+avoid walls, and refuse to pick fights they would lose.
+
+Food lives in a 20-cell bucket index rather than one flat map, so the per-tick
+work scales with what is near a snake instead of with the size of the world. It
+is headroom, not a rescue: measured over 400 ticks with 30 snakes and 3,600
+animals, a tick costs 2.7 ms with no humans connected and 3.5 ms with eight,
+against a 90 ms budget. The unindexed version measures 3.8–4.3 ms, which also
+fits — the index simply means the next time the world grows, nothing has to
+change.
 
 ## Levels
 

@@ -23,12 +23,12 @@ const PORT = parseInt(process.env.PORT, 10) || 8080;
 const ROOT = __dirname;
 
 /* ==================== arena rules ==================== */
-const W = 200, H = 200;              // cells — the world is 8x the campaign board on each axis
+const W = 400, H = 400;              // cells — 160,000 of them, 256x the campaign board
 const TICK_MS = 90;
 const START_LEN = 6;
-const FOOD_TARGET = 950;
-const POWER_TARGET = 18;
-const BOT_TARGET = 9;                // keeps the arena inhabited when few humans are on
+const FOOD_TARGET = 3600;            // held at roughly the same density as a smaller arena
+const POWER_TARGET = 72;
+const BOT_TARGET = 30;               // keeps a world this size from feeling empty
 const SEG_PER_LEVEL = 5;
 const SHIELD_MS = 8000;
 const FRENZY_MS = 7000;
@@ -88,6 +88,50 @@ const occupied = new Map();          // "x,y" -> playerId, rebuilt each tick
 const key = (x, y) => x + ',' + y;
 const rnd = n => Math.floor(Math.random() * n);
 
+/* Food lives in a bucket grid as well as the flat map. Every player's view,
+   every prize scan and every bot's search used to walk the whole food
+   collection; at 3,600 animals and thirty-odd snakes that is millions of
+   comparisons a second and the tick would not hold. Bucketing turns each of
+   those into a handful of cells. */
+const BUCKET = 20;
+const BCOLS = Math.ceil(W / BUCKET);
+const foodBuckets = new Map();
+const bucketOf = (x, y) => ((y / BUCKET) | 0) * BCOLS + ((x / BUCKET) | 0);
+
+function addFood(x, y, kind) {
+    const k = key(x, y);
+    if (food.has(k)) return;
+    const item = { x: x, y: y, kind: kind };
+    food.set(k, item);
+    const b = bucketOf(x, y);
+    let set = foodBuckets.get(b);
+    if (!set) { set = new Map(); foodBuckets.set(b, set); }
+    set.set(k, item);
+}
+
+function removeFood(k) {
+    const item = food.get(k);
+    if (!item) return null;
+    food.delete(k);
+    const set = foodBuckets.get(bucketOf(item.x, item.y));
+    if (set) set.delete(k);
+    return item;
+}
+
+/* Visit every food item within `r` cells of (cx, cy). */
+function forEachFoodNear(cx, cy, r, fn) {
+    const x0 = Math.max(0, ((cx - r) / BUCKET) | 0), x1 = Math.min(BCOLS - 1, ((cx + r) / BUCKET) | 0);
+    const y0 = Math.max(0, ((cy - r) / BUCKET) | 0), y1 = Math.min(Math.ceil(H / BUCKET) - 1, ((cy + r) / BUCKET) | 0);
+    for (let by = y0; by <= y1; by++)
+        for (let bx = x0; bx <= x1; bx++) {
+            const set = foodBuckets.get(by * BCOLS + bx);
+            if (!set) continue;
+            set.forEach(f => {
+                if (Math.abs(f.x - cx) <= r && Math.abs(f.y - cy) <= r) fn(f);
+            });
+        }
+}
+
 function freeCell(margin) {
     margin = margin || 2;
     for (let tries = 0; tries < 400; tries++) {
@@ -102,7 +146,7 @@ function spawnFood() {
     while (food.size < FOOD_TARGET) {
         const c = freeCell();
         // rarer animals are worth more and grow you a great deal faster
-        food.set(key(c.x, c.y), { x: c.x, y: c.y, kind: rollFood() });
+        addFood(c.x, c.y, rollFood());
     }
 }
 
@@ -179,7 +223,7 @@ function bodyToFood(p) {
         if (c.x < 1 || c.y < 1 || c.x >= W - 1 || c.y >= H - 1) continue;
         const k = key(c.x, c.y);
         if (food.has(k) || powers.has(k)) continue;
-        food.set(k, { x: c.x, y: c.y, kind: i % 6 === 0 ? 'MOUSE' : 'APPLE' });
+        addFood(c.x, c.y, i % 6 === 0 ? 'MOUSE' : 'APPLE');
     }
 }
 
@@ -324,7 +368,7 @@ function stepOnce(list, now) {
         const fk = key(it.x, it.y);
         const f = food.get(fk);
         if (f) {
-            food.delete(fk);
+            removeFood(fk);
             const mult = now < p.frenzyUntil ? 2 : 1;
             const gained = PREY_GROWTH[f.kind] * mult;
             p.grow += gained;
@@ -393,7 +437,7 @@ function lookAhead(x, y, d, n) {
 
 function nearestFood(x, y, radius) {
     let best = null;
-    food.forEach(f => {
+    forEachFoodNear(x, y, radius, f => {
         const d = Math.abs(f.x - x) + Math.abs(f.y - y);
         if (d <= radius && (!best || d < best.dist)) best = { f: f, dist: d };
     });
@@ -467,7 +511,7 @@ function viewFor(p) {
     });
 
     const fd = [];
-    food.forEach(f => { if (nearView(head.x, head.y, f.x, f.y)) fd.push(f.x, f.y, PREY_KINDS.indexOf(f.kind)); });
+    forEachFoodNear(head.x, head.y, VIEW, f => fd.push(f.x, f.y, PREY_KINDS.indexOf(f.kind)));
     const pw = [];
     powers.forEach(q => { if (nearView(head.x, head.y, q.x, q.y)) pw.push(q.x, q.y, q.kind === 'shield' ? 0 : 1); });
 
@@ -477,12 +521,10 @@ function viewFor(p) {
 
     // Rare quarry within a wider radius than you can see, so big game is
     // findable at all. Without this a fawn in a 200x200 world is a rumour.
-    const PRIZE_RANGE = 52;
+    const PRIZE_RANGE = 70;
     const prizes = [];
-    food.forEach(f => {
-        if (!RARE[f.kind]) return;
-        if (Math.abs(f.x - head.x) > PRIZE_RANGE || Math.abs(f.y - head.y) > PRIZE_RANGE) return;
-        prizes.push(f.x, f.y);
+    forEachFoodNear(head.x, head.y, PRIZE_RANGE, f => {
+        if (RARE[f.kind]) prizes.push(f.x, f.y);
     });
 
     return {
