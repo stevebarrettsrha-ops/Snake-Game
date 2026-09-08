@@ -27,7 +27,7 @@ const W = 400, H = 400;              // cells — 160,000 of them, 256x the camp
 const TICK_MS = 90;
 const START_LEN = 6;
 const FOOD_TARGET = 16000;           // ~1 animal per 10 cells; below this a 400x400 world reads as empty
-const POWER_TARGET = 240;            // ~1 per 667 cells; deliberately not scaled with the last food raise
+const POWER_TARGET = 320;            // ~1 per 500 cells, one power per 50 animals — the ratio held since 12,000
 const BOT_TARGET = 30;               // keeps a world this size from feeling empty
 const SEG_PER_LEVEL = 5;
 const SHIELD_MS = 8000;
