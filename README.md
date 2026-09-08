@@ -92,10 +92,10 @@ the lower one dies. Equal levels kill each other. A dead snake collapses into
 prey, so a kill is worth chasing.
 
 **Big game.** The arena stocks nine animals the campaign never sees, and they
-are worth crossing the map for. Weights are steep, so with 12,000 animals in
-the world you can expect roughly sixteen fawns, twenty-six goat kids and forty
-dogs out there at any moment — spread across a map far too large to sweep,
-which is the point.
+are worth crossing the map for. Weights are steep, so with 16,000 animals in
+the world you can expect roughly twenty-one fawns, thirty-five goat kids and
+sixty-four dogs out there at any moment — spread across a map far too large to
+sweep, which is the point.
 
 | Quarry | Length | Points | Share of spawns |
 |---|---:|---:|---:|
@@ -112,7 +112,7 @@ which is the point.
 Cat and above are haloed in gold so you can pick them out across the plain.
 Only goat kids and fawns get a pulsing minimap beacon, and only the nearest
 five: beacon the whole rare tier at this stocking and the minimap fills with
-thirty overlapping rings that point at nothing. Everything between cat and dog
+dozens of overlapping rings that point at nothing. Everything between cat and dog
 is found by looking, not by map.
 
 **Two power-ups, arena only.**
@@ -131,10 +131,10 @@ avoid walls, and refuse to pick fights they would lose.
 Food lives in a 20-cell bucket index rather than one flat map, so the per-tick
 work scales with what is near a snake instead of with the size of the world. At
 the arena's original stocking that was headroom rather than a fix — both the
-indexed and unindexed versions ran a tick in about 4 ms. At 12,000 animals it
-earns its keep: measured over 250 ticks with 30 snakes, a tick costs 5.3 ms
-with no humans connected and 7.1 ms with eight, against a 90 ms budget, where
-the unindexed version costs 24 ms and 33 ms. Density is what made the index
+indexed and unindexed versions ran a tick in about 4 ms. At 16,000 animals it
+earns its keep: measured over 250 ticks with 30 snakes, a tick costs 3.2 ms
+with no humans connected and 9.5 ms with eight, against a 90 ms budget, where
+the unindexed version costs 26 ms and 29 ms. Density is what made the index
 matter, not size.
 
 ## Levels

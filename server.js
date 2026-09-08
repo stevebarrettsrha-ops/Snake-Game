@@ -26,8 +26,8 @@ const ROOT = __dirname;
 const W = 400, H = 400;              // cells — 160,000 of them, 256x the campaign board
 const TICK_MS = 90;
 const START_LEN = 6;
-const FOOD_TARGET = 12000;           // ~1 animal per 13 cells; below this a 400x400 world reads as empty
-const POWER_TARGET = 240;            // scaled with the food, so powers stay as rare relative to prey
+const FOOD_TARGET = 16000;           // ~1 animal per 10 cells; below this a 400x400 world reads as empty
+const POWER_TARGET = 240;            // ~1 per 667 cells; deliberately not scaled with the last food raise
 const BOT_TARGET = 30;               // keeps a world this size from feeling empty
 const SEG_PER_LEVEL = 5;
 const SHIELD_MS = 8000;
@@ -41,9 +41,9 @@ const PREY_KINDS = ['APPLE', 'EGG', 'MOUSE', 'FROG', 'LIZARD', 'RABBIT',
                     'DOG', 'GOAT', 'FAWN'];
 
 /* What the arena stocks. `w` is a relative spawn weight, so the big game is
-   genuinely uncommon: with 12,000 animals in the world you can expect roughly
-   sixteen fawns and twenty-six goats out there at any moment, which is what
-   makes crossing the map for one worth doing. */
+   genuinely uncommon: with 16,000 animals in the world you can expect roughly
+   twenty-one fawns and thirty-five goats out there at any moment, which is
+   what makes crossing the map for one worth doing. */
 const ARENA_FOOD = [
     { k: 'APPLE',    w: 300,  grow: 1,  pts: 10   },
     { k: 'EGG',      w: 150,  grow: 1,  pts: 15   },
@@ -94,8 +94,8 @@ const rnd = n => Math.floor(Math.random() * n);
 /* Food lives in a bucket grid as well as the flat map. Every player's view,
    every prize scan and every bot's search would otherwise walk the whole food
    collection. At 3,600 animals that was survivable either way — both versions
-   ran a tick in about 4 ms. At 12,000 it is not: the flat scan costs 24 ms a
-   tick idle and 33 ms with eight viewers, against 5.3 and 7.1 bucketed, on a
+   ran a tick in about 4 ms. At 16,000 it is not: the flat scan costs 26 ms a
+   tick idle and 29 ms with eight viewers, against 3.2 and 9.5 bucketed, on a
    90 ms budget. Density is what makes this worth having, not world size. */
 const BUCKET = 20;
 const BCOLS = Math.ceil(W / BUCKET);
