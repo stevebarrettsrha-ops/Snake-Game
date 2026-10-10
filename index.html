@@ -275,6 +275,7 @@
         <button id="continueBtn" class="primary">Continue</button>
         <button id="newGameBtn">From level 1</button>
       </div>
+      <button id="menuStartBtn" class="primary">Start campaign</button>
       <p class="cue">Press space to begin</p>
       <p style="margin-top:14px"><a class="modelink" href="battle.html">Battle Royale &rarr;</a></p>
     </div>
@@ -338,6 +339,34 @@
    ========================================================================== */
 
 /* ---------------- seeded RNG (mulberry32) ---------------- */
+// Keep hidden overlays out of keyboard navigation and contain modal focus.
+function setDialogVisible(el, on) {
+    if (!el) return;
+    const changed = el.classList.contains('show') !== on || el.inert === on || el.getAttribute('aria-hidden') === null;
+    el.classList.toggle('show', on);
+    el.inert = !on;
+    el.setAttribute('aria-hidden', String(!on));
+    el.setAttribute('aria-modal', 'true');
+    el.tabIndex = -1;
+    if (changed && on) {
+        const first = Array.from(el.querySelectorAll('input, select, button, a[href]')).find(item => !item.disabled && item.getClientRects().length);
+        (first || el).focus();
+    }
+    else if (!on && el.contains(document.activeElement)) document.getElementById('gameCanvas').focus();
+}
+document.addEventListener('keydown', e => {
+    if (e.key !== 'Tab') return;
+    const dialog = document.querySelector('.overlay.show');
+    if (!dialog) return;
+    const items = Array.from(dialog.querySelectorAll('button, input, select, a[href], [tabindex="0"]'))
+        .filter(el => !el.disabled && el.getClientRects().length);
+    if (!items.length) { e.preventDefault(); dialog.focus(); return; }
+    const first = items[0], last = items[items.length - 1];
+    if (!dialog.contains(document.activeElement) || (e.shiftKey && document.activeElement === first)) {
+        e.preventDefault(); (e.shiftKey ? last : first).focus();
+    } else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+});
+
 function makeRng(seed) {
     let a = seed >>> 0;
     return function () {
@@ -3779,7 +3808,7 @@ function pickPart(list, id) {
    and belly tones from the base so the body still reads as a lit cylinder
    whatever colour is chosen, and drops the cached texture so the next draw
    picks up the change. */
-function setCustomSkin(cfg) {
+function setCustomSkin(cfg, speciesKey = 'custom') {
     cfg = cfg || DEFAULT_SKIN;
     const base = pickPart(SKIN_PARTS.base, cfg.base).hex;
     const mark = pickPart(SKIN_PARTS.mark, cfg.mark).hex;
@@ -3787,7 +3816,7 @@ function setCustomSkin(cfg) {
     const light = hexToRgb(base);
     const luma = (light.r * 0.299 + light.g * 0.587 + light.b * 0.114) / 255;
 
-    SPECIES.custom = {
+    SPECIES[speciesKey] = {
         name: 'Your snake',
         latin: 'Serpens tua',
         dorsal: base,
@@ -3802,10 +3831,10 @@ function setCustomSkin(cfg) {
         gloss: 0.36,
         period: 56
     };
-    if (cfg.pattern === 'barsCollar') SPECIES.custom.collar = mark;
-    HEAD_FORM.custom = { broad: 1.0 };
-    delete skinTextureCache.custom;
-    return SPECIES.custom;
+    if (cfg.pattern === 'barsCollar') SPECIES[speciesKey].collar = mark;
+    HEAD_FORM[speciesKey] = { broad: 1.0 };
+    delete skinTextureCache[speciesKey];
+    return SPECIES[speciesKey];
 }
 
 
@@ -4437,6 +4466,9 @@ function buildLevel(n) {
     const WAVE_TAIL   = TILE * 0.90;
 
     /* ---------------- DOM ---------------- */
+    const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    let reducedMotion = motionQuery.matches;
+    motionQuery.addEventListener('change', e => { reducedMotion = e.matches; if (reducedMotion) frame = 0; });
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas && canvas.getContext('2d');
     if (!ctx) {
@@ -4479,7 +4511,8 @@ function buildLevel(n) {
     let food = {};
     let score = 0, levelStartScore = 0;
     let gameState = 'start';        // start | playing | paused | dead | cleared
-    let frame = 0, steps = 0, idleDrift = 0;
+    let frame = 0, steps = 0, idleDrift = 0, effectStep = 0;
+    let transitionTimer = null, deathTimer = null;
     let particles = [], bursts = [], floaters = [];
     let banner = null, deathFlash = 0, gape = 0;
     let swallow = null;        // prey being drawn into the mouth right now
@@ -4524,7 +4557,7 @@ function buildLevel(n) {
     const activeSpecies = () =>
         useCustom ? 'custom' : (wildChoice === 'biome' ? biome().species : wildChoice);
     const announce = m => { if (announcer) announcer.textContent = m; };
-    const showOverlay = (el, on) => { if (el) el.classList.toggle('show', on); };
+    const showOverlay = setDialogVisible;
     const isWall = (x, y) => level.blocked[y * GRID_SIZE + x] === 1;
 
     /* ==================== AMBIENT PARTICLES ==================== */
@@ -4554,13 +4587,14 @@ function buildLevel(n) {
             });
     }
 
-    function updateParticles() {
+    function updateParticles(scale) {
+        if (reducedMotion) return;
         const spec = AIR[biome().particle.kind] || AIR.dust;
         for (let i = 0; i < particles.length; i++) {
             const p = particles[i];
-            p.x += p.vx + (spec.shape !== 'dot' ? Math.sin(frame * 0.03 + p.phase) * p.sway * 0.4 : 0);
-            p.y += p.vy;
-            p.rot += spec.spin;
+            p.x += (p.vx + (spec.shape !== 'dot' ? Math.sin(frame * 0.03 + p.phase) * p.sway * 0.4 : 0)) * scale;
+            p.y += p.vy * scale;
+            p.rot += spec.spin * scale;
             if (p.y > CANVAS_SIZE + 12) { p.y = -12; p.x = Math.random() * CANVAS_SIZE; }
             if (p.y < -12) { p.y = CANVAS_SIZE + 12; p.x = Math.random() * CANVAS_SIZE; }
             if (p.x > CANVAS_SIZE + 12) p.x = -12;
@@ -4586,6 +4620,7 @@ function buildLevel(n) {
     }
 
     function drawParticles() {
+        if (reducedMotion) return;
         const B = biome(), spec = AIR[B.particle.kind] || AIR.dust, col = B.particle.color;
         for (let i = 0; i < particles.length; i++) {
             const p = particles[i];
@@ -4622,6 +4657,7 @@ function buildLevel(n) {
 
     /* ==================== LEVEL LOADING ==================== */
     function loadLevel(n) {
+        clearTimeout(transitionTimer); clearTimeout(deathTimer);
         levelNo = Math.max(1, Math.min(LEVEL_COUNT, n));
         level = buildLevel(levelNo);
         eaten = 0;
@@ -4747,7 +4783,7 @@ function buildLevel(n) {
             headAngle: Math.atan2(direction.y, direction.x),
             gape: Math.max(gape, strike),
             bumps: activeBumps(),
-            undulation: { amp: WAVE_AMP, lambda: WAVE_LENGTH, travelled: travelled,
+            undulation: { amp: reducedMotion ? 0 : WAVE_AMP, lambda: WAVE_LENGTH, travelled: travelled,
                           rampHead: WAVE_HEAD, rampTail: WAVE_TAIL }
         });
     }
@@ -4808,6 +4844,7 @@ function buildLevel(n) {
     }
 
     function drawSwallow() {
+        if (reducedMotion) return;
         if (!swallow || !headInfo) return;
         const u = Math.min(1, swallow.t / SWALLOW_MS);
         // mouth position: the snout tip, wherever the head currently is
@@ -4838,6 +4875,7 @@ function buildLevel(n) {
 
     /* ==================== EFFECTS ==================== */
     function spawnBurst(x, y, color) {
+        if (reducedMotion) return;
         const bits = [];
         for (let i = 0; i < 16; i++) {
             const a = Math.random() * 6.283, s = 1.4 + Math.random() * 3.4;
@@ -4848,6 +4886,7 @@ function buildLevel(n) {
     }
 
     function drawBursts() {
+        if (reducedMotion) { bursts = []; return; }
         for (let i = bursts.length - 1; i >= 0; i--) {
             const b = bursts[i];
             ctx.save();
@@ -4859,17 +4898,18 @@ function buildLevel(n) {
                 const p = b.bits[k];
                 ctx.globalAlpha = b.alpha * p.life;
                 ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
-                p.x += p.vx; p.y += p.vy;
-                p.vx *= 0.90; p.vy *= 0.90; p.vy += 0.10;
-                p.life -= 0.035;
+                p.x += p.vx * effectStep; p.y += p.vy * effectStep;
+                p.vx *= Math.pow(0.90, effectStep); p.vy *= Math.pow(0.90, effectStep); p.vy += 0.10 * effectStep;
+                p.life -= 0.035 * effectStep;
             }
             ctx.restore();
-            b.ring += 3.2; b.alpha -= 0.035;
+            b.ring += 3.2 * effectStep; b.alpha -= 0.035 * effectStep;
             if (b.alpha <= 0) bursts.splice(i, 1);
         }
     }
 
     function drawFloaters() {
+        if (reducedMotion) { floaters = []; return; }
         for (let i = floaters.length - 1; i >= 0; i--) {
             const f = floaters[i];
             ctx.save();
@@ -4881,14 +4921,14 @@ function buildLevel(n) {
             ctx.fillStyle = f.color;
             ctx.fillText(f.text, f.x, f.y);
             ctx.restore();
-            f.y -= 0.85; f.alpha -= 0.018;
+            f.y -= 0.85 * effectStep; f.alpha -= 0.018 * effectStep;
             if (f.alpha <= 0) floaters.splice(i, 1);
         }
     }
 
     function drawBanner() {
         if (!banner) return;
-        banner.t++;
+        banner.t += effectStep;
         const IN = 18, HOLD = banner.cleared ? 46 : 62, OUT = 26;
         let a = 1;
         if (banner.t < IN) a = banner.t / IN;
@@ -4898,7 +4938,7 @@ function buildLevel(n) {
 
         const cy = CANVAS_SIZE * 0.42;
         ctx.save();
-        ctx.globalAlpha = a;
+        ctx.globalAlpha = reducedMotion ? 1 : a;
         ctx.textAlign = 'center';
         ctx.fillStyle = 'rgba(8,10,8,0.68)';
         ctx.fillRect(0, cy - 72, CANVAS_SIZE, 152);
@@ -4931,13 +4971,13 @@ function buildLevel(n) {
     }
 
     function drawDeathFlash() {
-        if (deathFlash <= 0) return;
+        if (deathFlash <= 0 || reducedMotion) return;
         ctx.save();
         ctx.globalAlpha = deathFlash;
         ctx.fillStyle = '#8e1206';
         ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
         ctx.restore();
-        deathFlash = Math.max(0, deathFlash - 0.045);
+        deathFlash = Math.max(0, deathFlash - 0.045 * effectStep);
     }
 
     /* ==================== LOOP ==================== */
@@ -4994,7 +5034,7 @@ function buildLevel(n) {
         } else {
             snake.pop();
         }
-        steps++; frame++;
+        steps++;
     }
 
     function clearLevel() {
@@ -5018,28 +5058,29 @@ function buildLevel(n) {
                    wrap: level.meta.wrap };
         announce('Level ' + levelNo + ' cleared.');
         startIdle();
-        setTimeout(function () {
+        transitionTimer = setTimeout(function () {
             if (gameState !== 'cleared') return;
             levelStartScore = score;
             loadLevel(levelNo + 1);
-            gameState = 'playing';
+            gameState = document.hidden ? 'paused' : 'playing';
             stopIdle();
             lastTime = 0; accumulated = 0;
-            animationId = requestAnimationFrame(loop);
+            if (gameState === 'playing') animationId = requestAnimationFrame(loop);
+            else startIdle();
         }, 1500);
     }
 
     function die(cause) {
         gameState = 'dead';
         if (animationId) { cancelAnimationFrame(animationId); animationId = null; }
-        deathFlash = 0.6;
+        deathFlash = reducedMotion ? 0 : 0.6;
         finalScoreEl.textContent = score;
         finalLevelEl.textContent = levelNo;
         finalNameEl.textContent = level.meta.name + ' — you hit ' + cause + '.';
         gameOverScreen.querySelector('h2').textContent = 'Caught out';
         requestAnimationFrame(function () {
             draw();
-            setTimeout(function () { showOverlay(gameOverScreen, true); startIdle(); }, 420);
+            deathTimer = setTimeout(function () { if (gameState === 'dead') { showOverlay(gameOverScreen, true); startIdle(); } }, 420);
         });
         announce('You hit ' + cause + ' on level ' + levelNo + '. Score ' + score);
     }
@@ -5088,9 +5129,11 @@ function buildLevel(n) {
                 accumulated -= speed;
                 if (gameState !== 'playing') return;
             }
-            frame++;
-            updateParticles();
+            effectStep = dt * 0.06;
+            if (!reducedMotion) frame += effectStep;
+            updateParticles(effectStep);
             draw();
+            effectStep = 0;
             animationId = requestAnimationFrame(loop);
         } catch (err) {
             gameState = 'dead';
@@ -5121,14 +5164,18 @@ function buildLevel(n) {
         (function idle(ts) {
             if (gameState === 'playing') { idleId = null; return; }
             if (ts - last >= IDLE_FRAME_MS) {
-                frame++;
+                const dt = last ? Math.min(100, ts - last) : IDLE_FRAME_MS;
+                effectStep = dt * 0.06;
+                if (!reducedMotion) frame += effectStep;
                 if (gameState !== 'paused') {
-                    idleDrift += 1.5;
-                    updateSwallow(IDLE_FRAME_MS);
+                    if (!reducedMotion) idleDrift += 1.5 * dt / IDLE_FRAME_MS;
+                    updateSwallow(dt);
                 }
-                updateParticles(); draw(); last = ts;
+                updateParticles(effectStep); draw(); last = ts;
+                effectStep = 0;
                 if (customScreen && customScreen.classList.contains('show')) {
-                    previewFrame++; drawSkinPreview();
+                    if (!reducedMotion) previewFrame += dt * 0.06;
+                    drawSkinPreview();
                 }
             }
             idleId = requestAnimationFrame(idle);
@@ -5138,6 +5185,7 @@ function buildLevel(n) {
 
     /* ==================== FLOW ==================== */
     function beginAt(n) {
+        canvas.focus();
         score = 0; levelStartScore = 0;
         showOverlay(startScreen, false);
         showOverlay(gameOverScreen, false);
@@ -5150,6 +5198,7 @@ function buildLevel(n) {
     }
 
     function retryLevel() {
+        canvas.focus();
         score = levelStartScore;
         showOverlay(gameOverScreen, false);
         loadLevel(levelNo);
@@ -5161,6 +5210,7 @@ function buildLevel(n) {
     }
 
     function togglePause() {
+        canvas.focus();
         if (gameState === 'playing') {
             gameState = 'paused';
             if (animationId) { cancelAnimationFrame(animationId); animationId = null; }
@@ -5317,7 +5367,7 @@ function buildLevel(n) {
         }
         const previewKey = useCustom ? 'custom'
             : (wildChoice === 'biome' ? biome().species : wildChoice);
-        renderSnake(c, [pts], previewKey, 30, previewFrame, {
+        renderSnake(c, [pts], previewKey, 30, reducedMotion ? 0 : previewFrame, {
             bumps: [{ s: 132, amp: 0.72, hw: 21 }]
         });
     }
@@ -5334,6 +5384,8 @@ function buildLevel(n) {
     function closeCustomiser() {
         showOverlay(customScreen, false);
         if (gameState === 'start') showOverlay(startScreen, true);
+        else if (gameState === 'dead' || gameState === 'cleared') showOverlay(gameOverScreen, true);
+        snakeBtn.focus();
         draw();
     }
 
@@ -5357,6 +5409,8 @@ function buildLevel(n) {
             if (e.key === 'Escape') { e.preventDefault(); closeCustomiser(); }
             return;
         }
+        if (e.target.closest('input, textarea, select, button, a, [contenteditable="true"]')) return;
+        if (e.repeat && e.code === 'Space') return;
         if (e.code === 'Space') {
             e.preventDefault();
             if (gameState === 'start') beginAt(parseInt(levelPick && levelPick.value, 10) || 1);
@@ -5389,6 +5443,7 @@ function buildLevel(n) {
         else turn(0, dy > 0 ? 1 : -1);
     }, { passive: true });
 
+    $('menuStartBtn').addEventListener('click', function () { beginAt(parseInt(levelPick.value, 10) || 1); });
     startBtn.addEventListener('click', function () {
         if (gameState === 'start') beginAt(parseInt(levelPick && levelPick.value, 10) || 1);
         else if (gameState === 'dead') retryLevel();
@@ -5421,16 +5476,19 @@ function buildLevel(n) {
 
     canvas.addEventListener('contextrestored', function () {
         ctx.imageSmoothingQuality = 'high';
-        loadLevel(levelNo);
-        draw();
-        if (gameState !== 'playing') startIdle();
-        announce('Display restored.');
+        // The canvas lost its pixels, not the game state. Preserve the run.
+        lastTime = 0; accumulated = 0;
+        if (gameState === 'playing') gameState = 'paused';
+        draw(); startIdle();
+        announce('Display restored. Press space to resume.');
     }, false);
 
     document.addEventListener('visibilitychange', function () {
         if (document.hidden && gameState === 'playing') togglePause();
     });
 
+
+    document.querySelectorAll('.overlay').forEach(el => setDialogVisible(el, el.classList.contains('show')));
 
     /* ==================== BOOT ==================== */
     buildLevelPicker();

@@ -19,7 +19,8 @@ const path = require('path');
 const crypto = require('crypto');
 const os = require('os');
 
-const PORT = parseInt(process.env.PORT, 10) || 8080;
+const requestedPort = Number(process.env.PORT ?? 8080);
+const PORT = Number.isInteger(requestedPort) && requestedPort >= 0 && requestedPort <= 65535 ? requestedPort : 8080;
 const ROOT = __dirname;
 
 /* ==================== arena rules ==================== */
@@ -139,12 +140,17 @@ function freeCell(margin) {
         if (!occupied.has(key(x, y)) && !food.has(key(x, y)) && !powers.has(key(x, y)))
             return { x: x, y: y };
     }
-    return { x: rnd(W), y: rnd(H) };
+    for (let y = margin; y < H - margin; y++)
+        for (let x = margin; x < W - margin; x++)
+            if (!occupied.has(key(x, y)) && !food.has(key(x, y)) && !powers.has(key(x, y)))
+                return { x, y };
+    return null;
 }
 
 function spawnFood() {
     while (food.size < FOOD_TARGET) {
         const c = freeCell();
+        if (!c) break;
         // rarer animals are worth more and grow you a great deal faster
         addFood(c.x, c.y, rollFood());
     }
@@ -153,6 +159,7 @@ function spawnFood() {
 function spawnPowers() {
     while (powers.size < POWER_TARGET) {
         const c = freeCell(6);
+        if (!c) break;
         powers.set(key(c.x, c.y), {
             x: c.x, y: c.y, kind: Math.random() < 0.5 ? 'shield' : 'frenzy'
         });
@@ -161,49 +168,88 @@ function spawnPowers() {
 
 /* A spawn point with elbow room, so nobody materialises inside a big snake. */
 function safeSpawn() {
+    const fits = (x, y, d, roomy) => {
+        const dir = DIRS[d];
+        for (let i = -START_LEN + 1; i <= RESPAWN_CLEAR; i++) {
+            const cx = x + dir.x * i, cy = y + dir.y * i;
+            if (cx < 1 || cy < 1 || cx >= W - 1 || cy >= H - 1 || occupied.has(key(cx, cy))) return false;
+        }
+        if (roomy)
+            for (let dy = -RESPAWN_CLEAR; dy <= RESPAWN_CLEAR; dy++)
+                for (let dx = -RESPAWN_CLEAR; dx <= RESPAWN_CLEAR; dx++)
+                    if (occupied.has(key(x + dx, y + dy))) return false;
+        return true;
+    };
     for (let tries = 0; tries < 500; tries++) {
         const x = 8 + rnd(W - 16), y = 8 + rnd(H - 16);
-        let clear = true;
-        for (let dy = -RESPAWN_CLEAR; dy <= RESPAWN_CLEAR && clear; dy++)
-            for (let dx = -RESPAWN_CLEAR; dx <= RESPAWN_CLEAR; dx++)
-                if (occupied.has(key(x + dx, y + dy))) { clear = false; break; }
-        if (clear) return { x: x, y: y };
+        const d = rnd(4);
+        if (fits(x, y, d, true)) return { x, y, d };
     }
-    return { x: 10 + rnd(W - 20), y: 10 + rnd(H - 20) };
+    // A crowded arena may have no safe spawn. Never fall back to an overlap.
+    for (let y = 1; y < H - 1; y++)
+        for (let x = 1; x < W - 1; x++)
+            for (let d = 0; d < 4; d++)
+                if (fits(x, y, d, false)) return { x, y, d };
+    return null;
 }
 
 function makeSnake(p) {
+    rebuildOccupancy();
     const s = safeSpawn();
-    const d = rnd(4);
+    if (!s) return false;
+    const d = s.d;
     p.dir = d;
     p.wish = d;
+    p.turns = [];
     p.body = [];
     for (let i = 0; i < START_LEN; i++)
-        p.body.push({ x: clamp(s.x - DIRS[d].x * i, 1, W - 2),
-                      y: clamp(s.y - DIRS[d].y * i, 1, H - 2) });
+        p.body.push({ x: s.x - DIRS[d].x * i, y: s.y - DIRS[d].y * i });
     p.alive = true;
     p.grow = 0;
     p.shieldUntil = 0;
     p.frenzyUntil = 0;
     p.moveAcc = 0;
     p.spawnedAt = Date.now();
+    p.best = START_LEN;
+    p.deathCause = null;
+    p.killedBy = null;
+    for (const c of p.body) {
+        occupied.set(key(c.x, c.y), p.id);
+        removeFood(key(c.x, c.y));
+        powers.delete(key(c.x, c.y));
+    }
+    return true;
 }
 const clamp = (v, lo, hi) => v < lo ? lo : v > hi ? hi : v;
 
 function addPlayer(opts) {
     const p = {
         id: nextId++,
-        name: (opts.name || 'Snake').slice(0, 14),
-        species: opts.species || 'grassSnake',
-        skin: opts.skin || null,
+        name: typeof opts.name === 'string' ? opts.name.replace(/[\x00-\x1f\x7f]/g, '').trim().slice(0, 14) || 'Snake' : 'Snake',
+        species: WILD.includes(opts.species) || opts.species === 'custom' ? opts.species : 'grassSnake',
+        skin: cleanSkin(opts.skin),
         bot: !!opts.bot,
         ws: opts.ws || null,
         score: 0, kills: 0, best: 0,
         alive: false, deadAt: 0
     };
     players.set(p.id, p);
-    makeSnake(p);
+    if (!makeSnake(p)) { players.delete(p.id); return null; }
     return p;
+}
+
+function cleanSkin(value) {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+    const skin = {};
+    for (const field of ['base', 'mark', 'pattern', 'eye', 'pupil'])
+        if (typeof value[field] === 'string' && /^[a-zA-Z]{1,24}$/.test(value[field])) skin[field] = value[field];
+    return skin;
+}
+
+function queueTurn(p, d) {
+    if (!Number.isInteger(d) || d < 0 || d > 3 || p.turns.length >= 2) return;
+    const last = p.turns.length ? p.turns[p.turns.length - 1] : p.dir;
+    if (d !== last && d !== (last + 2) % 4) p.turns.push(d);
 }
 
 /* ==================== simulation ==================== */
@@ -268,6 +314,7 @@ function tick() {
         stepOnce(stepping, now);
     }
 
+    rebuildOccupancy();
     maintainBots();
     spawnFood();
     spawnPowers();
@@ -290,6 +337,7 @@ function stepOnce(list, now) {
     for (const p of list) {
         if (!p.alive) continue;
         // honour the queued turn unless it is a reversal
+        if (!p.bot && p.turns.length) p.wish = p.turns.shift();
         const d = DIRS[p.wish];
         const cur = DIRS[p.dir];
         if (!(d.x === -cur.x && d.y === -cur.y)) p.dir = p.wish;
@@ -302,61 +350,54 @@ function stepOnce(list, now) {
     }
 
     const doomed = new Set();
+    const intents = new Map(intent.map(it => [it.p.id, it]));
+    const strength = p => now < p.shieldUntil ? Infinity : levelOf(p.body.length);
+    const eliminate = (loser, winner, cause) => {
+        doomed.add(loser.id);
+        loser.deathCause = cause;
+        // A victim grants one reward, even when several snakes hit it together.
+        const prior = players.get(loser.killedBy);
+        if (winner && (!prior || strength(winner) > strength(prior) ||
+            (strength(winner) === strength(prior) && winner.id < prior.id))) loser.killedBy = winner.id;
+    };
+    const fight = (a, b) => {
+        const sa = strength(a), sb = strength(b);
+        if (sa > sb) eliminate(b, a, 'outsized in a collision');
+        else if (sa < sb) eliminate(a, b, 'outsized in a collision');
+        else {
+            const cause = sa === Infinity ? 'two shields cancelled each other' : 'a mutual kill';
+            eliminate(a, null, cause); eliminate(b, null, cause);
+        }
+    };
+
+    // Resolve every contested destination using the same rules as body hits.
+    for (const contenders of heads.values()) {
+        if (contenders.length < 2) continue;
+        const top = Math.max(...contenders.map(strength));
+        const leaders = contenders.filter(p => strength(p) === top);
+        for (const p of contenders) {
+            if (leaders.length === 1 && p === leaders[0]) continue;
+            eliminate(p, leaders.length === 1 ? leaders[0] : null,
+                      top === Infinity && leaders.length > 1 ? 'two shields cancelled each other' : 'lost a head-on');
+        }
+    }
 
     for (const it of intent) {
         const p = it.p;
-        // hard world edge — the arena does not wrap
         if (it.x < 1 || it.y < 1 || it.x >= W - 1 || it.y >= H - 1) {
-            p.deathCause = 'stopped by the wall';
-            doomed.add(p.id);
+            eliminate(p, null, 'stopped by the wall');
             continue;
         }
-        const contenders = heads.get(key(it.x, it.y));
-        if (contenders && contenders.length > 1) {
-            // head-on: the bigger level survives, a tie kills both
-            let top = -1, tied = false;
-            for (const q of contenders) {
-                const lv = levelOf(q.body.length);
-                if (lv > top) { top = lv; tied = false; }
-                else if (lv === top) tied = true;
-            }
-            const mine = levelOf(p.body.length);
-            const shielded = now < p.shieldUntil;
-            if (!shielded && (mine < top || (mine === top && tied))) {
-                p.deathCause = mine === top ? 'lost a head-on to an equal' : 'outsized head-on';
-                doomed.add(p.id);
-            }
-            continue;
-        }
-        const hitId = occupied.get(key(it.x, it.y));
-        if (hitId !== undefined) {
-            const other = players.get(hitId);
-            const tailOf = other && other.alive ? other.body[other.body.length - 1] : null;
-            const isVacatingTail = tailOf && tailOf.x === it.x && tailOf.y === it.y &&
-                                   list.indexOf(other) !== -1 && other.grow <= 0;
-            if (isVacatingTail) continue;          // that cell empties this step
-            if (now < p.shieldUntil) {             // shield ploughs through
-                if (other && other.id !== p.id) { doomed.add(other.id); other.killedBy = p.id; }
-                continue;
-            }
-            if (other && other.id === p.id) {                                  // ate itself
-                p.deathCause = 'coiled into yourself';
-                doomed.add(p.id);
-                continue;
-            }
-            const mine = levelOf(p.body.length), theirs = levelOf(other.body.length);
-            if (now < other.shieldUntil) {
-                p.deathCause = 'broken on ' + other.name + "'s shield";
-                doomed.add(p.id);
-                continue;
-            }
-            if (mine > theirs) { doomed.add(other.id); other.killedBy = p.id; }
-            else if (mine < theirs) { doomed.add(p.id); p.killedBy = other.id; }
-            else {
-                p.deathCause = other.deathCause = 'a mutual kill';
-                doomed.add(p.id); doomed.add(other.id);
-            }
-        }
+        const other = players.get(occupied.get(key(it.x, it.y)));
+        if (!other || !other.alive) continue;
+        const tail = other.body[other.body.length - 1];
+        const move = intents.get(other.id);
+        // Eating on this step keeps the tail in place, even with no queued growth.
+        const vacating = tail.x === it.x && tail.y === it.y && move &&
+                         other.grow <= 0 && !food.has(key(move.x, move.y));
+        if (vacating) continue;
+        if (other === p) eliminate(p, null, 'coiled into yourself');
+        else fight(p, other);
     }
 
     // advance the survivors
@@ -549,6 +590,9 @@ function broadcast() {
    Only what this game needs: a text channel with ping/pong and close. Server
    frames go out unmasked; client frames arrive masked and are unmasked here. */
 const GUID = '258EAFA5-E914-47DA-95CA-C5AB0DC85B11';
+const MAX_MESSAGE = 4096;
+const MAX_BUFFERED = 512 * 1024;
+const sockets = new Set();
 
 function acceptKey(key) {
     return crypto.createHash('sha1').update(key + GUID).digest('base64');
@@ -556,6 +600,7 @@ function acceptKey(key) {
 
 function send(ws, obj) {
     if (ws.dead || ws.socket.destroyed) return;
+    if (ws.socket.writableLength > MAX_BUFFERED) { ws.socket.destroy(); return; }
     const payload = Buffer.from(JSON.stringify(obj));
     const len = payload.length;
     let header;
@@ -586,48 +631,71 @@ function sendControl(ws, opcode, payload) {
 }
 
 function attachSocket(socket, onMessage, onClose) {
-    const ws = { socket: socket, dead: false };
-    let buf = Buffer.alloc(0);
-
-    socket.on('data', chunk => {
+    const ws = { socket, dead: false, lastPong: Date.now() };
+    sockets.add(ws);
+    let buf = Buffer.alloc(0), fragments = [], fragmentBytes = 0;
+    let inMessage = false, closed = false, rateStart = Date.now(), frames = 0;
+    const finish = () => {
+        if (closed) return;
+        closed = true; ws.dead = true; sockets.delete(ws); onClose();
+    };
+    const reject = code => {
+        if (ws.dead) return;
+        const data = Buffer.alloc(2); data.writeUInt16BE(code);
+        sendControl(ws, 0x8, data);
+        finish(); socket.end();
+        // A peer that never finishes closing must not retain a socket forever.
+        socket.setTimeout(1000, () => socket.destroy());
+    };
+    ws.receive = chunk => {
+        if (ws.dead) return;
+        // Bound pending input as well as the size of each complete message.
+        if (buf.length + chunk.length > MAX_MESSAGE * 4) { reject(1009); return; }
         buf = Buffer.concat([buf, chunk]);
         for (;;) {
             if (buf.length < 2) return;
-            const b0 = buf[0], b1 = buf[1];
-            const opcode = b0 & 0x0f;
-            const masked = (b1 & 0x80) !== 0;
-            let len = b1 & 0x7f;
-            let off = 2;
+            if (Date.now() - rateStart >= 1000) { frames = 0; rateStart = Date.now(); }
+            const b0 = buf[0], b1 = buf[1], opcode = b0 & 15, fin = !!(b0 & 128);
+            if ((b0 & 112) || !(b1 & 128) || ![0, 1, 8, 9, 10].includes(opcode)) { reject(1002); return; }
+            let len = b1 & 127, off = 2;
             if (len === 126) {
-                if (buf.length < off + 2) return;
-                len = buf.readUInt16BE(off); off += 2;
+                if (buf.length < 4) return;
+                len = buf.readUInt16BE(2); off = 4;
+                if (len < 126) { reject(1002); return; }
             } else if (len === 127) {
-                if (buf.length < off + 8) return;
-                // payloads that need the high word are not something this game sends
-                len = buf.readUInt32BE(off + 4); off += 8;
+                if (buf.length < 10) return;
+                // Every 64-bit payload exceeds this game's 4 KiB message limit.
+                reject(1009); return;
             }
-            let mask = null;
-            if (masked) {
-                if (buf.length < off + 4) return;
-                mask = buf.slice(off, off + 4); off += 4;
-            }
-            if (buf.length < off + len) return;
-            const data = Buffer.from(buf.slice(off, off + len));
-            buf = buf.slice(off + len);
-            if (mask) for (let i = 0; i < data.length; i++) data[i] ^= mask[i & 3];
-
-            if (opcode === 0x8) { ws.dead = true; sendControl(ws, 0x8); socket.end(); onClose(); return; }
-            else if (opcode === 0x9) sendControl(ws, 0xA, data);      // ping -> pong
-            else if (opcode === 0x1) {
-                let msg = null;
-                try { msg = JSON.parse(data.toString('utf8')); } catch (e) { /* ignore junk */ }
-                if (msg) onMessage(msg);
-            }
+            const control = opcode >= 8;
+            if (control && (!fin || len > 125 || (opcode === 8 && len === 1))) { reject(1002); return; }
+            if (len + (control ? 0 : fragmentBytes) > MAX_MESSAGE) { reject(1009); return; }
+            if (buf.length < off + 4 + len) return;
+            if (++frames > 120) { reject(1008); return; }
+            const mask = buf.subarray(off, off + 4); off += 4;
+            const data = Buffer.from(buf.subarray(off, off + len));
+            buf = buf.subarray(off + len);
+            for (let i = 0; i < data.length; i++) data[i] ^= mask[i & 3];
+            if (opcode === 8) { sendControl(ws, 8); finish(); socket.end(); return; }
+            if (opcode === 9) { sendControl(ws, 10, data); continue; }
+            if (opcode === 10) { ws.lastPong = Date.now(); continue; }
+            if ((opcode === 0 && !inMessage) || (opcode === 1 && inMessage)) { reject(1002); return; }
+            fragments.push(data); fragmentBytes += data.length; inMessage = !fin;
+            if (!fin) continue;
+            let msg;
+            try {
+                const text = new TextDecoder('utf-8', { fatal: true }).decode(Buffer.concat(fragments));
+                msg = JSON.parse(text);
+            } catch (e) { reject(1007); return; }
+            fragments = []; fragmentBytes = 0;
+            if (!msg || typeof msg !== 'object' || Array.isArray(msg) || typeof msg.t !== 'string') { reject(1008); return; }
+            onMessage(msg);
+            if (ws.dead) return;
         }
-    });
-
-    socket.on('error', () => { ws.dead = true; onClose(); });
-    socket.on('close', () => { ws.dead = true; onClose(); });
+    };
+    socket.on('data', ws.receive);
+    socket.on('error', finish);
+    socket.on('close', finish);
     socket.setNoDelay(true);
     return ws;
 }
@@ -637,22 +705,32 @@ const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; ch
                 '.css': 'text/css; charset=utf-8', '.png': 'image/png', '.md': 'text/markdown; charset=utf-8' };
 
 const server = http.createServer((req, res) => {
-    let rel = decodeURIComponent(req.url.split('?')[0]);
+    let rel;
+    try { rel = decodeURIComponent(req.url.split('?')[0]); }
+    catch (e) { res.writeHead(400).end('Invalid URL'); return; }
+    if (req.method !== 'GET' && req.method !== 'HEAD') { res.writeHead(405).end('Method not allowed'); return; }
     if (rel === '/' ) rel = '/index.html';
     if (rel === '/favicon.ico') { res.writeHead(204).end(); return; }
-    const file = path.join(ROOT, path.normalize(rel).replace(/^(\.\.[/\\])+/, ''));
-    if (!file.startsWith(ROOT)) { res.writeHead(403).end('Forbidden'); return; }
+    // Serve game assets only; source, tests and repository metadata stay private.
+    if (!['/index.html', '/battle.html'].includes(rel)) { res.writeHead(404).end('Not found'); return; }
+    const file = path.join(ROOT, rel);
     fs.readFile(file, (err, data) => {
         if (err) { res.writeHead(404, { 'Content-Type': 'text/plain' }).end('Not found'); return; }
         res.writeHead(200, { 'Content-Type': TYPES[path.extname(file)] || 'application/octet-stream',
                              'Cache-Control': 'no-cache' });
-        res.end(data);
+        res.end(req.method === 'HEAD' ? undefined : data);
     });
 });
 
-server.on('upgrade', (req, socket) => {
+server.on('upgrade', (req, socket, head) => {
     const wsKey = req.headers['sec-websocket-key'];
-    if (!wsKey) { socket.destroy(); return; }
+    let originOK = !req.headers.origin || req.headers.origin === 'null';
+    try { if (req.headers.origin && req.headers.origin !== 'null') originOK = new URL(req.headers.origin).host === req.headers.host; } catch (e) { }
+    if (req.method !== 'GET' || !['/', '/arena'].includes(req.url) ||
+        req.headers.upgrade?.toLowerCase() !== 'websocket' || req.headers['sec-websocket-version'] !== '13' ||
+        typeof wsKey !== 'string' || !/^[A-Za-z0-9+/]{22}==$/.test(wsKey) || !originOK || sockets.size >= 128) {
+        socket.end('HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n'); return;
+    }
     socket.write('HTTP/1.1 101 Switching Protocols\r\n' +
                  'Upgrade: websocket\r\nConnection: Upgrade\r\n' +
                  'Sec-WebSocket-Accept: ' + acceptKey(wsKey) + '\r\n\r\n');
@@ -661,23 +739,27 @@ server.on('upgrade', (req, socket) => {
     const ws = attachSocket(socket,
         msg => {
             if (msg.t === 'join') {
-                if (player) players.delete(player.id);
+                if (player) return;
                 player = addPlayer({ ws: ws, name: msg.name, species: msg.species, skin: msg.skin });
+                if (!player) { send(ws, { t: 'error', message: 'Arena full. Try again shortly.' }); return; }
                 send(ws, { t: 'welcome', id: player.id, w: W, h: H, view: VIEW,
                            tick: TICK_MS, shieldMs: SHIELD_MS, frenzyMs: FRENZY_MS });
             } else if (msg.t === 'dir' && player && player.alive) {
-                const d = msg.d | 0;
-                if (d >= 0 && d < 4) player.wish = d;
+                queueTurn(player, msg.d);
             } else if (msg.t === 'respawn' && player && !player.alive) {
-                player.score = 0; player.kills = 0;
-                makeSnake(player);
+                if (makeSnake(player)) { player.score = 0; player.kills = 0; }
+                else send(ws, { t: 'error', message: 'No safe spawn available. Try again shortly.' });
             }
         },
         () => { if (player) { players.delete(player.id); player = null; } });
+    if (head && head.length) ws.receive(head);
 });
 
 server.listen(PORT, () => {
-    const nets = os.networkInterfaces();
+    const port = server.address().port;
+    let nets = {};
+    try { nets = os.networkInterfaces(); }
+    catch (e) { console.warn('LAN address discovery unavailable; use this computer\'s IP address.'); }
     const lan = [];
     Object.keys(nets).forEach(n => (nets[n] || []).forEach(a => {
         if (a.family === 'IPv4' && !a.internal) lan.push(a.address);
@@ -686,8 +768,8 @@ server.listen(PORT, () => {
     console.log('  Serpent — Battle Royale');
     console.log('  arena ' + W + ' x ' + H + ' cells, ' + (1000 / TICK_MS).toFixed(1) + ' ticks/s');
     console.log('');
-    console.log('  play here     http://localhost:' + PORT);
-    lan.forEach(a => console.log('  same network  http://' + a + ':' + PORT));
+    console.log('  play here     http://localhost:' + port);
+    lan.forEach(a => console.log('  same network  http://' + a + ':' + port));
     console.log('');
     console.log('  Open the page, choose Battle Royale, and share the address.');
     console.log('  Ctrl-C to stop.');
@@ -698,3 +780,10 @@ spawnFood();
 spawnPowers();
 maintainBots();
 setInterval(tick, TICK_MS);
+setInterval(() => {
+    const now = Date.now();
+    for (const ws of sockets) {
+        if (now - ws.lastPong > 45000) ws.socket.destroy();
+        else sendControl(ws, 9);
+    }
+}, 15000);

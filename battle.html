@@ -282,7 +282,7 @@
 
     <div class="overlay panel show" id="battleScreen" role="dialog" aria-labelledby="br-title">
       <h2 id="br-title">Battle Royale</h2>
-      <p>One huge arena. Eat to grow. The bigger snake always wins.</p>
+      <p>One huge arena. Eat to grow. Size wins fights unless a shield intervenes.</p>
       <div class="rule"></div>
       <div class="field">
         <label for="brName">Name</label>
@@ -298,9 +298,9 @@
           <div class="sw chips" id="brSpecies" role="group" aria-labelledby="lb-brsp"></div></div>
       </div>
       <div class="rules">
-        <div>Bigger level wins <span>always</span></div>
+        <div>Bigger level wins <span>unless shielded</span></div>
         <div>Equal levels <span>both die</span></div>
-        <div>Shield <span>8s</span></div>
+        <div>Shield <span>8s; two shields cancel</span></div>
         <div>Frenzy <span>7s</span></div>
         <div>Kills drop prey <span>yes</span></div>
         <div>World <span>400×400</span></div>
@@ -348,6 +348,34 @@
    ========================================================================== */
 
 /* ---------------- seeded RNG (mulberry32) ---------------- */
+// Keep hidden overlays out of keyboard navigation and contain modal focus.
+function setDialogVisible(el, on) {
+    if (!el) return;
+    const changed = el.classList.contains('show') !== on || el.inert === on || el.getAttribute('aria-hidden') === null;
+    el.classList.toggle('show', on);
+    el.inert = !on;
+    el.setAttribute('aria-hidden', String(!on));
+    el.setAttribute('aria-modal', 'true');
+    el.tabIndex = -1;
+    if (changed && on) {
+        const first = Array.from(el.querySelectorAll('input, select, button, a[href]')).find(item => !item.disabled && item.getClientRects().length);
+        (first || el).focus();
+    }
+    else if (!on && el.contains(document.activeElement)) document.getElementById('gameCanvas').focus();
+}
+document.addEventListener('keydown', e => {
+    if (e.key !== 'Tab') return;
+    const dialog = document.querySelector('.overlay.show');
+    if (!dialog) return;
+    const items = Array.from(dialog.querySelectorAll('button, input, select, a[href], [tabindex="0"]'))
+        .filter(el => !el.disabled && el.getClientRects().length);
+    if (!items.length) { e.preventDefault(); dialog.focus(); return; }
+    const first = items[0], last = items[items.length - 1];
+    if (!dialog.contains(document.activeElement) || (e.shiftKey && document.activeElement === first)) {
+        e.preventDefault(); (e.shiftKey ? last : first).focus();
+    } else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+});
+
 function makeRng(seed) {
     let a = seed >>> 0;
     return function () {
@@ -3789,7 +3817,7 @@ function pickPart(list, id) {
    and belly tones from the base so the body still reads as a lit cylinder
    whatever colour is chosen, and drops the cached texture so the next draw
    picks up the change. */
-function setCustomSkin(cfg) {
+function setCustomSkin(cfg, speciesKey = 'custom') {
     cfg = cfg || DEFAULT_SKIN;
     const base = pickPart(SKIN_PARTS.base, cfg.base).hex;
     const mark = pickPart(SKIN_PARTS.mark, cfg.mark).hex;
@@ -3797,7 +3825,7 @@ function setCustomSkin(cfg) {
     const light = hexToRgb(base);
     const luma = (light.r * 0.299 + light.g * 0.587 + light.b * 0.114) / 255;
 
-    SPECIES.custom = {
+    SPECIES[speciesKey] = {
         name: 'Your snake',
         latin: 'Serpens tua',
         dorsal: base,
@@ -3812,12 +3840,31 @@ function setCustomSkin(cfg) {
         gloss: 0.36,
         period: 56
     };
-    if (cfg.pattern === 'barsCollar') SPECIES.custom.collar = mark;
-    HEAD_FORM.custom = { broad: 1.0 };
-    delete skinTextureCache.custom;
-    return SPECIES.custom;
+    if (cfg.pattern === 'barsCollar') SPECIES[speciesKey].collar = mark;
+    HEAD_FORM[speciesKey] = { broad: 1.0 };
+    delete skinTextureCache[speciesKey];
+    return SPECIES[speciesKey];
 }
 
+
+// Cache remote designs by player, not under the viewer's shared "custom" key.
+const arenaSkins = new Map();
+function arenaSkinKey(snake) {
+    if (snake.sp !== 'custom') return SPECIES[snake.sp] ? snake.sp : 'grassSnake';
+    const key = 'arena-' + snake.id;
+    const signature = JSON.stringify(snake.sk || DEFAULT_SKIN);
+    if (arenaSkins.get(key) !== signature) {
+        setCustomSkin(snake.sk, key);
+        arenaSkins.set(key, signature);
+    }
+    return key;
+}
+function pruneArenaSkins(snakes) {
+    const visible = new Set(snakes.filter(s => s.sp === 'custom').map(s => 'arena-' + s.id));
+    for (const key of arenaSkins.keys()) if (!visible.has(key)) {
+        arenaSkins.delete(key); delete SPECIES[key]; delete HEAD_FORM[key]; delete skinTextureCache[key];
+    }
+}
 
 /* ==========================================================================
    BATTLE ROYALE — client
@@ -3831,6 +3878,9 @@ function setCustomSkin(cfg) {
 
     const CANVAS = 700, CELL = 28, HALF = CANVAS / 2;
     const $ = id => document.getElementById(id);
+    const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    let reducedMotion = motionQuery.matches;
+    motionQuery.addEventListener('change', e => { reducedMotion = e.matches; if (reducedMotion) frame = 0; });
     const canvas = $('gameCanvas');
     const ctx = canvas && canvas.getContext('2d');
     if (!ctx) {
@@ -3843,7 +3893,7 @@ function setCustomSkin(cfg) {
     const joinPanel = $('battleScreen'), deathPanel = $('battleDeath');
     const announcer = $('game-announcer');
     const announce = m => { if (announcer) announcer.textContent = m; };
-    const show = (el, on) => { if (el) el.classList.toggle('show', on); };
+    const show = setDialogVisible;
 
     /* ---- which snake you wear. Shared with the campaign through the same
        stored settings, so a design made there shows up here. ---- */
@@ -3864,6 +3914,7 @@ function setCustomSkin(cfg) {
         const u = localStorage.getItem('serpentArena');
         if (u) $('brUrl').value = u;
     } catch (e) { /* private mode */ }
+    if (location.host) $('brUrl').value = location.host;
     setCustomSkin(skin);
 
     function buildSpeciesChips() {
@@ -3898,7 +3949,7 @@ function setCustomSkin(cfg) {
         you: null, lb: [], alive: 0, blips: [],
         camX: 100, camY: 100, flash: 0, joined: false
     };
-    let frame = 0, raf = null, feast = null;
+    let frame = 0, raf = null, feast = null, effectStep = 0, previousFrame = 0;
 
     /* ==================== ground ==================== */
     let tile = null, pattern = null;
@@ -4032,15 +4083,19 @@ function setCustomSkin(cfg) {
                 B.joined = true;
                 B.camX = m.w / 2; B.camY = m.h / 2;
                 statusText('');
-                show(joinPanel, false); show(deathPanel, false);
+                show(joinPanel, false); show(deathPanel, false); canvas.focus();
                 $('brWho').textContent = name + ' · ' + (SPECIES[species] || SPECIES.grassSnake).name;
                 announce('Joined the arena');
             } else if (m.t === 'state') {
                 B.prev = B.cur; B.cur = m; B.curAt = performance.now();
+                pruneArenaSkins(m.s);
                 B.you = m.you; B.lb = m.lb; B.alive = m.alive; B.blips = m.m;
                 updateHud();
+            } else if (m.t === 'error') {
+                statusText(m.message); announce(m.message);
+                if (B.you && !B.you.alive) show(deathPanel, true);
             } else if (m.t === 'died') {
-                B.flash = 0.7;
+                B.flash = reducedMotion ? 0 : 0.7;
                 $('brCause').textContent = m.cause.charAt(0).toUpperCase() + m.cause.slice(1) + '.';
                 $('brLevel').textContent = m.level;
                 $('brScore').textContent = m.score;
@@ -4108,8 +4163,9 @@ function setCustomSkin(cfg) {
 
         const me = snakes.find(s => s.s.me);
         if (me && me.pts.length) {
-            B.camX += (me.pts[0].x - B.camX) * 0.32;
-            B.camY += (me.pts[0].y - B.camY) * 0.32;
+            const easing = reducedMotion ? 1 : 1 - Math.pow(0.68, effectStep);
+            B.camX += (me.pts[0].x - B.camX) * easing;
+            B.camY += (me.pts[0].y - B.camY) * easing;
         }
         const halfCells = HALF / CELL;
         B.camX = Math.max(halfCells, Math.min(B.world.w - halfCells, B.camX));
@@ -4156,11 +4212,11 @@ function setCustomSkin(cfg) {
             const pts = s.pts.map(p => ({ x: sx(p.x + 0.5), y: sy(p.y + 0.5) }));
             // the more you have eaten, the thicker you are
             const bw = CELL * (0.60 + Math.min(0.80, s.s.lv * 0.05));
-            const key = SPECIES[s.s.sp] ? s.s.sp : 'grassSnake';
+            const key = arenaSkinKey(s.s);
             if (s.s.sh > 0) drawShield(pts, bw);
             renderSnake(ctx, [pts], key, bw, frame, {
                 simple: !(s.s.me || detailed),
-                undulation: { amp: bw * 0.34, lambda: bw * 5.2,
+                undulation: { amp: reducedMotion ? 0 : bw * 0.34, lambda: bw * 5.2,
                               travelled: now * 0.05 + s.s.id * 37,
                               rampHead: bw * 1.4, rampTail: bw * 0.9 }
             });
@@ -4168,13 +4224,13 @@ function setCustomSkin(cfg) {
             drawTag(pts[0], s.s, bw);
         }
 
-        if (B.flash > 0) {
+        if (B.flash > 0 && !reducedMotion) {
             ctx.save();
             ctx.globalAlpha = B.flash;
             ctx.fillStyle = '#8e1206';
             ctx.fillRect(0, 0, CANVAS, CANVAS);
             ctx.restore();
-            B.flash = Math.max(0, B.flash - 0.02);
+            B.flash = Math.max(0, B.flash - 0.02 * effectStep);
         }
 
         drawMinimap();
@@ -4358,14 +4414,14 @@ function setCustomSkin(cfg) {
 
     function drawFeast() {
         if (!feast) return;
-        feast.t++;
+        feast.t += effectStep;
         const IN = 10, HOLD = 62, OUT = 26;
         let a = 1;
         if (feast.t < IN) a = feast.t / IN;
         else if (feast.t > IN + HOLD) a = 1 - (feast.t - IN - HOLD) / OUT;
         if (feast.t > IN + HOLD + OUT) { feast = null; return; }
         ctx.save();
-        ctx.globalAlpha = Math.max(0, Math.min(1, a));
+        ctx.globalAlpha = reducedMotion ? 1 : Math.max(0, Math.min(1, a));
         ctx.textAlign = 'center';
         const cy = CANVAS * 0.30;
         ctx.fillStyle = '#d6ab49';
@@ -4417,6 +4473,8 @@ function setCustomSkin(cfg) {
         d: 0, s: 1, a: 2, w: 3, D: 0, S: 1, A: 2, W: 3
     };
     document.addEventListener('keydown', e => {
+        if (e.target.closest('input, textarea, select, button, a, [contenteditable="true"]')) return;
+        if (e.repeat && e.code === 'Space') return;
         if (e.code === 'Space') {
             e.preventDefault();
             if (deathPanel.classList.contains('show')) { sendMsg({ t: 'respawn' }); show(deathPanel, false); }
@@ -4440,19 +4498,23 @@ function setCustomSkin(cfg) {
 
     $('brJoin').addEventListener('click', connect);
     $('brRejoin').addEventListener('click', () => {
-        if (B.joined) { show(deathPanel, false); sendMsg({ t: 'respawn' }); }
+        if (B.joined) { show(deathPanel, false); canvas.focus(); sendMsg({ t: 'respawn' }); }
         else { show(joinPanel, true); }
     });
-    $('brRespawn').addEventListener('click', () => { show(deathPanel, false); sendMsg({ t: 'respawn' }); });
+    $('brRespawn').addEventListener('click', () => { show(deathPanel, false); canvas.focus(); sendMsg({ t: 'respawn' }); });
     $('brQuit').addEventListener('click', () => {
         disconnect(); show(deathPanel, false); show(joinPanel, true); statusText('');
     });
 
+    document.querySelectorAll('.overlay').forEach(el => setDialogVisible(el, el.classList.contains('show')));
+
     /* ==================== boot ==================== */
     buildSpeciesChips();
     buildGround(); buildDecor();
-    (function loop() {
-        frame++;
+    (function loop(ts) {
+        effectStep = previousFrame ? Math.min(100, ts - previousFrame) * 0.06 : 0;
+        previousFrame = ts;
+        if (!reducedMotion) frame += effectStep;
         if (B.cur) draw();
         else {
             // an idle arena view behind the join panel, so the page is never blank
@@ -4464,7 +4526,7 @@ function setCustomSkin(cfg) {
             ctx.restore();
         }
         raf = requestAnimationFrame(loop);
-    })();
+    })(performance.now());
 
     window.__battle = B;
 })();
