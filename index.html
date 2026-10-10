@@ -5385,7 +5385,7 @@ function buildLevel(n) {
         showOverlay(customScreen, false);
         if (gameState === 'start') showOverlay(startScreen, true);
         else if (gameState === 'dead' || gameState === 'cleared') showOverlay(gameOverScreen, true);
-        snakeBtn.focus();
+        else snakeBtn.focus();
         draw();
     }
 

@@ -82,7 +82,8 @@ function client(file, reduced = false) {
     let script=html.match(/<script>([\s\S]*?)<\/script>/)[1];
     if(file==='index.html') {
         const end=script.lastIndexOf('})();');
-        script=script.slice(0,end)+`window.inspect = () => ({gameState,frame,steps,score,levelNo,
+        script=script.slice(0,end)+`window.testFlow = { beginAt, clearLevel };
+            window.inspect = () => ({gameState,frame,steps,score,levelNo,
             body:JSON.stringify(snake),particles:JSON.stringify(particles),pending:pending.length});\n`+script.slice(end);
     }
     vm.runInContext(script,context,{filename:file});
@@ -130,4 +131,26 @@ test('hidden dialogs are inert and keyboard focus stays in the active dialog', (
     assert.equal(c.document.activeElement,c.ids.get('brName'));
     const dialog=c.ids.get('battleScreen'),last=dialog.querySelectorAll('button, input, select, a[href]').at(-1);
     last.focus();const e=c.key(last,'Tab');assert.equal(e.prevented,true);assert.equal(c.document.activeElement,c.ids.get('brName'));
+});
+
+for (const state of ['start', 'dead', 'cleared']) test(`closing customizer keeps focus inside the restored ${state} dialog`, () => {
+    const c=client('index.html');
+    if(state==='dead') { c.context.testFlow.beginAt(2); c.advance(6000); }
+    if(state==='cleared') { c.context.testFlow.beginAt(150); c.context.testFlow.clearLevel(); }
+    assert.equal(c.context.inspect().gameState,state);
+    const dialog=c.ids.get(state==='start'?'startScreen':'gameOverScreen');
+    c.ids.get('snakeBtn').emit('click');
+    assert.ok(c.ids.get('customScreen').contains(c.document.activeElement));
+    c.ids.get('closeCustomBtn').emit('click');
+    assert.equal(dialog.classList.contains('show'),true);
+    assert.equal(dialog.inert,false);
+    assert.ok(dialog.contains(c.document.activeElement), 'focus must stay in the restored dialog before the next Tab');
+    assert.equal(c.ids.get('customScreen').inert,true);
+});
+test('closing customizer returns focus to Snake when no modal is restored', () => {
+    const c=client('index.html');c.ids.get('menuStartBtn').emit('click');
+    c.ids.get('snakeBtn').emit('click');assert.equal(c.context.inspect().gameState,'paused');
+    c.key(c.document.activeElement,'Escape');
+    assert.equal(c.document.querySelector('.overlay.show'),null);
+    assert.equal(c.document.activeElement,c.ids.get('snakeBtn'));
 });
