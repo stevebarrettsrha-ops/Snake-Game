@@ -77,7 +77,9 @@ node server.js          # prints a localhost address and a LAN address
 ```
 
 Open the address, pick a snake, and join. Everyone who opens it is in the same
-arena. No npm install — the WebSocket handshake and frame codec are implemented
+arena. The join screen uses the address of the computer serving the page, so
+other devices on your LAN connect to the host rather than to their own localhost.
+Use Node.js 22 or newer. No npm install — the WebSocket handshake and frame codec are implemented
 against RFC 6455 inside `server.js`, because adding a dependency to a project
 whose whole point is not having any would be a poor trade.
 
@@ -86,9 +88,13 @@ campaign board — and it is walled on every side. Nothing wraps: run into the e
 you are finished. The camera follows you and a minimap shows how little of it
 you can see at once.
 
-**Size is everything.** Eat to grow; every five segments is a level, and you get
+**Size decides ordinary fights.** Eat to grow; every five segments is a level, and you get
 visibly thicker as you go. When two snakes touch, the higher level survives and
-the lower one dies. Equal levels kill each other. A dead snake collapses into
+the lower one dies. Equal levels kill each other. A shield beats any unshielded
+opponent; two shields cancel and both snakes die. Shields do not protect against
+walls or self-collisions. The same rules apply to head-on and body collisions,
+and each defeated snake awards its winner one kill and 120 points.
+A dead snake collapses into
 prey, so a kill is worth chasing.
 
 **Big game.** The arena stocks nine animals the campaign never sees, and they
@@ -118,7 +124,7 @@ target.
 
 | | Effect | Lasts |
 |---|---|---:|
-| **Shield** | Nothing can eat you, and anything that tries dies instead | 8s |
+| **Shield** | Wins against unshielded opponents; two shields cancel each other | 8s |
 | **Frenzy** | Move 1.7× faster and take double growth from every animal | 7s |
 
 The server is authoritative: clients send a heading and render what they are
@@ -219,6 +225,31 @@ canvas code inside `index.html`.
 
 Any current browser with Canvas 2D. Respects `prefers-reduced-motion`, keeps
 ARIA live regions for score and level changes, and is fully keyboard playable.
+Reduced motion disables decorative canvas movement, flashes and particle bursts
+while preserving the movement needed to play. Keyboard shortcuts respect text
+fields and controls, and hidden dialogs are excluded from keyboard navigation.
+
+## Verification
+
+Run the dependency-free checks with Node.js 22 or newer:
+
+```bash
+node --check server.js
+node --test tests/*.test.js
+```
+
+The suite checks campaign reachability across all 150 levels, arena collisions,
+kill rewards, safe spawns, buffered turns, separate custom skins, malformed
+requests, WebSocket framing, client controls, reduced motion and display recovery.
+An integration check starts the real server and connects multiple WebSocket clients.
+Client behavior tests use a minimal DOM and canvas substitute; they do not replace
+a browser playtest or visual inspection. GitHub Actions runs these checks on pushes
+and pull requests.
+
+The server limits inbound messages, connection counts and queued outgoing data,
+validates WebSocket upgrades, and disconnects unresponsive peers. It serves only
+the game pages, not repository metadata or server source. A full arena refuses an
+unsafe spawn; retry when space becomes available.
 
 ## Licence
 
